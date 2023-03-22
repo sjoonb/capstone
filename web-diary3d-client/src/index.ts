@@ -3,6 +3,10 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { io, Socket } from "socket.io-client";
+import Stats from "three/examples/jsm/libs/stats.module";
+
+const stats = Stats();
+document.body.appendChild(stats.dom);
 
 // SOCKET
 
@@ -42,6 +46,7 @@ orbitControls.enableDamping = true;
 orbitControls.minDistance = 5;
 orbitControls.maxDistance = 15;
 orbitControls.enablePan = false;
+orbitControls.enableRotate = false;
 orbitControls.maxPolarAngle = Math.PI / 2 - 0.05;
 orbitControls.update();
 
@@ -94,7 +99,7 @@ function wrapAndRepeatTexture(map: THREE.Texture) {
 generateFloor();
 
 // MODEL WITH ANIMATIONS
-var characterControls: CharacterControls;
+let characterControls: CharacterControls;
 new GLTFLoader().load("models/Character.glb", function (gltf) {
   const model = gltf.scene;
   model.traverse(function (object: any) {
@@ -125,22 +130,61 @@ new GLTFLoader().load("models/Character.glb", function (gltf) {
 const keysPressed = {};
 document.addEventListener("keydown", (event) => {
   (keysPressed as any)[event.key.toLowerCase()] = true;
-  socket.emit('message', keysPressed);
+  socket.emit("message", keysPressed);
 });
 
 document.addEventListener("keyup", (event) => {
   (keysPressed as any)[event.key.toLowerCase()] = false;
-  socket.emit('message', keysPressed);
+  socket.emit("message", keysPressed);
 });
+
+// CONTROL MOUSE
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let mouseClickPoint: THREE.Vector3 | null = null;
+let isMouseDown = false;
+
+function onMouseDown(event: any) {
+  isMouseDown = true;
+  onMouseMove(event);
+}
+
+function onMouseUp() {
+  isMouseDown = false;
+}
+
+function onMouseMove(event: any) {
+  if (isMouseDown) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  }
+}
+
+document.addEventListener("mousedown", onMouseDown);
+document.addEventListener("mouseup", onMouseUp);
+document.addEventListener("mousemove", onMouseMove);
+
+function updateMouseClickPoint() {
+  if (isMouseDown) {
+    raycaster.setFromCamera(mouse, camera);
+  }
+  const intersects = raycaster.intersectObjects(scene.children);
+
+  if (intersects.length > 0) {
+    mouseClickPoint = intersects[0].point;
+  }
+}
 
 const clock = new THREE.Clock();
 // ANIMATE
 function animate() {
   let mixerUpdateDelta = clock.getDelta();
+  updateMouseClickPoint();
   if (characterControls) {
-    characterControls.update(mixerUpdateDelta, keysPressed);
+    characterControls.update(mixerUpdateDelta, mouseClickPoint);
   }
   orbitControls.update();
+  stats.update();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
