@@ -2,6 +2,18 @@ import { CharacterControls } from "./characterControls";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { io, Socket } from "socket.io-client";
+
+// SOCKET
+
+export const socket: Socket = io("http://127.0.0.1:80", {
+  transports: ["websocket"],
+  closeOnBeforeunload: false,
+});
+
+socket.on("connect", () => {
+  console.log("connected");
+});
 
 // SCENE
 const scene = new THREE.Scene();
@@ -111,20 +123,15 @@ new GLTFLoader().load("models/Character.glb", function (gltf) {
 
 // CONTROL KEYS
 const keysPressed = {};
-document.addEventListener(
-  "keydown",
-  (event) => {
-    (keysPressed as any)[event.key.toLowerCase()] = true;
-  },
-  false
-);
-document.addEventListener(
-  "keyup",
-  (event) => {
-    (keysPressed as any)[event.key.toLowerCase()] = false;
-  },
-  false
-);
+document.addEventListener("keydown", (event) => {
+  (keysPressed as any)[event.key.toLowerCase()] = true;
+  socket.emit('message', keysPressed);
+});
+
+document.addEventListener("keyup", (event) => {
+  (keysPressed as any)[event.key.toLowerCase()] = false;
+  socket.emit('message', keysPressed);
+});
 
 const clock = new THREE.Clock();
 // ANIMATE

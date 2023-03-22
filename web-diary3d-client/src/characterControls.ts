@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { socket } from ".";
 import { A, D, DIRECTIONS, S, W } from "./constants";
 
 export class CharacterControls {
@@ -82,7 +83,6 @@ export class CharacterControls {
       this.camera.getWorldDirection(this.walkDirection);
       this.walkDirection.y = 0;
       this.walkDirection.normalize();
-      console.log(directionOffset);
       this.walkDirection.applyAxisAngle(this.rotateAngle, directionOffset)
 
 
