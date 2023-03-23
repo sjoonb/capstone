@@ -4,21 +4,23 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { io, Socket } from "socket.io-client";
 import Stats from "three/examples/jsm/libs/stats.module";
-import { isMobile } from "./utils";
+import { checkIsMobile } from "./utils";
+
+const isMobile = checkIsMobile();
 
 const stats = Stats();
 document.body.appendChild(stats.dom);
 
 // SOCKET
 
-export const socket: Socket = io("http://127.0.0.1:80", {
-  transports: ["websocket"],
-  closeOnBeforeunload: false,
-});
+// export const socket: Socket = io("http://127.0.0.1:80", {
+//   transports: ["websocket"],
+//   closeOnBeforeunload: false,
+// });
 
-socket.on("connect", () => {
-  console.log("connected");
-});
+// socket.on("connect", () => {
+//   console.log("connected");
+// });
 
 // SCENE
 const scene = new THREE.Scene();
@@ -36,9 +38,10 @@ camera.position.z = 5;
 camera.position.x = 0;
 
 // RENDERER
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+console.log(window.devicePixelRatio);
+renderer.setPixelRatio(window.devicePixelRatio / (isMobile ? 2 : 1));
 renderer.shadowMap.enabled = true;
 
 // CONTROLS
@@ -133,7 +136,7 @@ const mouse = new THREE.Vector2();
 let mouseClickPoint: THREE.Vector3 | null = null;
 let isMouseDown = false;
 
-if (isMobile()) {
+if (isMobile) {
   const onTouchStart = (event: any) => {
     isMouseDown = true;
     onTouchMove(event);
@@ -176,9 +179,7 @@ if (isMobile()) {
 }
 
 function updateMouseClickPoint() {
-  if (isMouseDown) {
-    raycaster.setFromCamera(mouse, camera);
-  }
+  raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObjects(scene.children);
 
   if (intersects.length > 0) {

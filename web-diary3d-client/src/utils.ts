@@ -1,4 +1,4 @@
-export function isMobile() {
+export function checkIsMobile() {
   return (
     navigator.userAgent.match(/Android/i) ||
     navigator.userAgent.match(/webOS/i) ||
@@ -8,4 +8,17 @@ export function isMobile() {
     navigator.userAgent.match(/BlackBerry/i) ||
     navigator.userAgent.match(/Windows Phone/i)
   );
+}
+
+
+function throttle(fn: Function, delay: number) {
+  let lastCall = 0;
+  return function (...args: any[]) {
+    const now = new Date().getTime();
+    if (now - lastCall < delay) {
+      return;
+    }
+    lastCall = now;
+    return fn.apply(this, args);
+  };
 }
