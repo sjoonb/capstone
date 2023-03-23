@@ -4,6 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { io, Socket } from "socket.io-client";
 import Stats from "three/examples/jsm/libs/stats.module";
+import { isMobile } from "./utils";
 
 const stats = Stats();
 document.body.appendChild(stats.dom);
@@ -138,31 +139,53 @@ document.addEventListener("keyup", (event) => {
   socket.emit("message", keysPressed);
 });
 
-// CONTROL MOUSE
+// CONTROL MOUSE & MOBILE TOUCH
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let mouseClickPoint: THREE.Vector3 | null = null;
 let isMouseDown = false;
 
-function onMouseDown(event: any) {
-  isMouseDown = true;
-  onMouseMove(event);
-}
+if (isMobile()) {
+  const onTouchStart = (event: any) => {
+    isMouseDown = true;
+    onTouchMove(event);
+  };
 
-function onMouseUp() {
-  isMouseDown = false;
-}
+  const onTouchEnd = () => {
+    isMouseDown = false;
+  };
 
-function onMouseMove(event: any) {
-  if (isMouseDown) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  const onTouchMove = (event: any) => {
+    if (isMouseDown) {
+      mouse.x = (event.touches[0].clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.touches[0].clientY / window.innerHeight) * 2 + 1;
+    }
+  };
+
+  document.addEventListener("touchstart", onTouchStart);
+  document.addEventListener("touchend", onTouchEnd);
+  document.addEventListener("touchmove", onTouchMove);
+} else {
+  const onMouseDown = (event: any) => {
+    isMouseDown = true;
+    onMouseMove(event);
   }
-}
 
-document.addEventListener("mousedown", onMouseDown);
-document.addEventListener("mouseup", onMouseUp);
-document.addEventListener("mousemove", onMouseMove);
+  const onMouseUp = () => {
+    isMouseDown = false;
+  }
+
+  const onMouseMove = (event: any) => {
+    if (isMouseDown) {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    }
+  }
+
+  document.addEventListener("mousedown", onMouseDown);
+  document.addEventListener("mouseup", onMouseUp);
+  document.addEventListener("mousemove", onMouseMove);
+}
 
 function updateMouseClickPoint() {
   if (isMouseDown) {
@@ -179,7 +202,10 @@ const clock = new THREE.Clock();
 // ANIMATE
 function animate() {
   let mixerUpdateDelta = clock.getDelta();
-  updateMouseClickPoint();
+  if (isMouseDown) {
+    updateMouseClickPoint();
+    // socket.emit("message", mouseClickPoint);
+  }
   if (characterControls) {
     characterControls.update(mixerUpdateDelta, mouseClickPoint);
   }
