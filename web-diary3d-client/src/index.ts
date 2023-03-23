@@ -127,18 +127,6 @@ new GLTFLoader().load("models/Character.glb", function (gltf) {
   );
 });
 
-// CONTROL KEYS
-const keysPressed = {};
-document.addEventListener("keydown", (event) => {
-  (keysPressed as any)[event.key.toLowerCase()] = true;
-  socket.emit("message", keysPressed);
-});
-
-document.addEventListener("keyup", (event) => {
-  (keysPressed as any)[event.key.toLowerCase()] = false;
-  socket.emit("message", keysPressed);
-});
-
 // CONTROL MOUSE & MOBILE TOUCH
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
@@ -169,18 +157,18 @@ if (isMobile()) {
   const onMouseDown = (event: any) => {
     isMouseDown = true;
     onMouseMove(event);
-  }
+  };
 
   const onMouseUp = () => {
     isMouseDown = false;
-  }
+  };
 
   const onMouseMove = (event: any) => {
     if (isMouseDown) {
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
-  }
+  };
 
   document.addEventListener("mousedown", onMouseDown);
   document.addEventListener("mouseup", onMouseUp);
