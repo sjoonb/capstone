@@ -83,7 +83,7 @@ function generateFloor() {
   const WIDTH = 80;
   const LENGTH = 80;
 
-  const geometry = new THREE.PlaneGeometry(WIDTH, LENGTH, 512, 512);
+  const geometry = new THREE.PlaneGeometry(WIDTH, LENGTH);
   const material = new THREE.MeshBasicMaterial({
     map: sandBaseColor,
   });
