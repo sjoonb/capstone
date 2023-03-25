@@ -92,6 +92,7 @@ function generateFloor() {
   const floor = new THREE.Mesh(geometry, material);
   floor.receiveShadow = true;
   floor.rotation.x = -Math.PI / 2;
+  floor.name = "floor";
   scene.add(floor);
 }
 
@@ -180,7 +181,7 @@ if (isMobile) {
 
 function updateMouseClickPoint() {
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(scene.children);
+  const intersects = raycaster.intersectObject(scene.getObjectByName("floor"));
 
   if (intersects.length > 0) {
     mouseClickPoint = intersects[0].point;
