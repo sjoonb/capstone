@@ -1,4 +1,5 @@
 const path = require('path');
+const Dotenv = require('dotenv-webpack');
 
 const src = path.resolve(__dirname, 'src');
 
@@ -25,4 +26,9 @@ module.exports = {
   devServer: {
     contentBase: src,
   },
+  plugins: [
+    new Dotenv({
+      path: `.env`,
+    }),
+  ],
 }

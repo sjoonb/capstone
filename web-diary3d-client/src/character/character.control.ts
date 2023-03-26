@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 export class CharacterControls {
+  id: string | null;
   model: THREE.Group;
   mixer: THREE.AnimationMixer;
   animationsMap: Map<string, THREE.AnimationAction> = new Map(); // Run, Idle
@@ -21,6 +22,7 @@ export class CharacterControls {
   velocity = 5;
 
   constructor(
+    id: string | null,
     model: THREE.Group,
     mixer: THREE.AnimationMixer,
     animationsMap: Map<string, THREE.AnimationAction>,
@@ -28,6 +30,7 @@ export class CharacterControls {
     camera: THREE.Camera,
     currentAction: string
   ) {
+    this.id = id;
     this.model = model;
     this.mixer = mixer;
     this.animationsMap = animationsMap;
@@ -39,7 +42,9 @@ export class CharacterControls {
     });
     this.orbitControl = orbitControl;
     this.camera = camera;
-    this.updateCameraTarget(0, 0);
+    if (id === "me") {
+      this.updateCameraTarget(0, 0);
+    }
   }
 
   public update(delta: number, position: THREE.Vector3 | null) {
@@ -90,7 +95,10 @@ export class CharacterControls {
       const moveZ = walkDirection.z * this.velocity * delta;
       this.model.position.x += moveX;
       this.model.position.z += moveZ;
-      this.updateCameraTarget(moveX, moveZ);
+
+      if (this.id === "me") {
+        this.updateCameraTarget(moveX, moveZ);
+      }
     }
   }
 

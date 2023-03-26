@@ -1,26 +1,65 @@
-import { CharacterControls } from "./characterControls";
+import { CharacterControls } from "./character/character.control";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { io, Socket } from "socket.io-client";
 import Stats from "three/examples/jsm/libs/stats.module";
-import { checkIsMobile } from "./utils";
+import { createCharacterControls } from "./character/character.factory";
 
-const isMobile = checkIsMobile();
+const isMobile =
+  navigator.userAgent.match(/Android/i) ||
+  navigator.userAgent.match(/webOS/i) ||
+  navigator.userAgent.match(/iPhone/i) ||
+  navigator.userAgent.match(/iPad/i) ||
+  navigator.userAgent.match(/iPod/i) ||
+  navigator.userAgent.match(/BlackBerry/i) ||
+  navigator.userAgent.match(/Windows Phone/i);
 
-const stats = Stats();
-document.body.appendChild(stats.dom);
+let currentControls: CharacterControls[] = [];
+const otherCharacterControls: CharacterControls[] = [];
+const othersMouseClickPoints = new Map<string, THREE.Vector3>();
+
 
 // SOCKET
+export let socket: Socket;
+function initSocketListen() {
+  socket = io(process.env.SOCKET_URI, {
+    transports: ["websocket"],
+    closeOnBeforeunload: false,
+    
+  });
 
-// export const socket: Socket = io("http://127.0.0.1:80", {
-//   transports: ["websocket"],
-//   closeOnBeforeunload: false,
-// });
+  socket.on("connect", () => {
+    console.log("connected");
+  });
 
-// socket.on("connect", () => {
-//   console.log("connected");
-// });
+  socket.on("user-join", (clientId) => {
+    console.log("user-join", clientId);
+    const controls = otherCharacterControls.shift();
+    controls.id = clientId;
+    controls.model.scale.y *= -1;
+    currentControls.push(controls);
+  });
+
+  socket.on("user-leave", (clientId) => {
+    const index = currentControls.findIndex(
+      (control) => control.id == clientId
+    );
+
+    if (index !== -1) {
+      scene.remove(currentControls[index].model);
+      currentControls.splice(index, 1);
+      othersMouseClickPoints.delete(clientId);
+    }
+  });
+
+  socket.on("mouse-click-point", (data) => {
+    const { clientId, mouseClickPoint } = data;
+    const { x, y, z } = mouseClickPoint;
+    const position = new THREE.Vector3(x, y, z);
+
+    othersMouseClickPoints.set(clientId, position);
+  });
+}
 
 // SCENE
 const scene = new THREE.Scene();
@@ -103,33 +142,31 @@ function wrapAndRepeatTexture(map: THREE.Texture) {
 
 generateFloor();
 
-// MODEL WITH ANIMATIONS
-let characterControls: CharacterControls;
-new GLTFLoader().load("models/Character.glb", function (gltf) {
-  const model = gltf.scene;
-  model.traverse(function (object: any) {
-    if (object.isMesh) object.castShadow = true;
-  });
-  scene.add(model);
-
-  const gltfAnimations: THREE.AnimationClip[] = gltf.animations;
-  const mixer = new THREE.AnimationMixer(model);
-  const animationsMap: Map<string, THREE.AnimationAction> = new Map();
-  gltfAnimations
-    .filter((a) => a.name != "TPose")
-    .forEach((a: THREE.AnimationClip) => {
-      animationsMap.set(a.name, mixer.clipAction(a));
-    });
-
-  characterControls = new CharacterControls(
-    model,
-    mixer,
-    animationsMap,
+async function generateCharacters() {
+  const myCharacterControl = await createCharacterControls(
+    "models/Character.glb",
     orbitControls,
     camera,
-    "Idle"
+    scene,
+    "me"
   );
-});
+
+  currentControls.push(myCharacterControl);
+
+  // FOR PRERENDER OTHER PLAYERS MODELS
+  for (let i = 0; i < 3; ++i) {
+    const control = await createCharacterControls(
+      "models/Character.glb",
+      orbitControls,
+      camera,
+      scene,
+      null
+    );
+
+    control.model.scale.y *= -1;
+    otherCharacterControls.push(control);
+  }
+}
 
 // CONTROL MOUSE & MOBILE TOUCH
 const raycaster = new THREE.Raycaster();
@@ -179,6 +216,14 @@ if (isMobile) {
   document.addEventListener("mousemove", onMouseMove);
 }
 
+// RESIZE HANDLER
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener("resize", onWindowResize);
+
 function updateMouseClickPoint() {
   raycaster.setFromCamera(mouse, camera);
   const intersects = raycaster.intersectObject(scene.getObjectByName("floor"));
@@ -188,16 +233,26 @@ function updateMouseClickPoint() {
   }
 }
 
+
+const stats = Stats();
+document.body.appendChild(stats.dom);
+
 const clock = new THREE.Clock();
+
 // ANIMATE
 function animate() {
   let mixerUpdateDelta = clock.getDelta();
   if (isMouseDown) {
     updateMouseClickPoint();
-    // socket.emit("message", mouseClickPoint);
+    socket.emit("mouse-click-point", mouseClickPoint);
   }
-  if (characterControls) {
-    characterControls.update(mixerUpdateDelta, mouseClickPoint);
+  for (let i = 0; i < currentControls.length; ++i) {
+    const control = currentControls[i];
+    if (control.id === "me") {
+      control.update(mixerUpdateDelta, mouseClickPoint);
+    } else {
+      control.update(mixerUpdateDelta, othersMouseClickPoints.get(control.id));
+    }
   }
   orbitControls.update();
   stats.update();
@@ -205,12 +260,10 @@ function animate() {
   requestAnimationFrame(animate);
 }
 document.body.appendChild(renderer.domElement);
-animate();
 
-// RESIZE HANDLER
-function onWindowResize() {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+async function load() {
+  await generateCharacters();
+  initSocketListen();
 }
-window.addEventListener("resize", onWindowResize);
+
+load().then(animate);
