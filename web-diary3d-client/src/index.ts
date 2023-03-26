@@ -18,6 +18,7 @@ let currentControls: CharacterControls[] = [];
 const otherCharacterControls: CharacterControls[] = [];
 const othersMouseClickPoints = new Map<string, THREE.Vector3>();
 
+const maxOtherUserCount = 3;
 
 // SOCKET
 export let socket: Socket;
@@ -25,31 +26,28 @@ function initSocketListen() {
   socket = io(process.env.SOCKET_URI, {
     transports: ["websocket"],
     closeOnBeforeunload: false,
-    
   });
 
   socket.on("connect", () => {
     console.log("connected");
   });
 
+  socket.on(
+    "others-pos",
+    (characterPositions: { [key: string]: THREE.Vector3 }) => {
+      console.log("others-pos", characterPositions);
+      for (let clientId in characterPositions) {
+        allocateCharacter(clientId, characterPositions[clientId]);
+      }
+    }
+  );
+
   socket.on("user-join", (clientId) => {
-    console.log("user-join", clientId);
-    const controls = otherCharacterControls.shift();
-    controls.id = clientId;
-    controls.model.scale.y *= -1;
-    currentControls.push(controls);
+    allocateCharacter(clientId);
   });
 
   socket.on("user-leave", (clientId) => {
-    const index = currentControls.findIndex(
-      (control) => control.id == clientId
-    );
-
-    if (index !== -1) {
-      scene.remove(currentControls[index].model);
-      currentControls.splice(index, 1);
-      othersMouseClickPoints.delete(clientId);
-    }
+    freeCharacter(clientId);
   });
 
   socket.on("mouse-click-point", (data) => {
@@ -59,6 +57,10 @@ function initSocketListen() {
 
     othersMouseClickPoints.set(clientId, position);
   });
+
+  setInterval(() => {
+    socket.emit("sync-pos", currentControls[0].model.position);
+  }, 1000);
 }
 
 // SCENE
@@ -142,6 +144,7 @@ function wrapAndRepeatTexture(map: THREE.Texture) {
 
 generateFloor();
 
+// CHARACTERS
 async function generateCharacters() {
   const myCharacterControl = await createCharacterControls(
     "models/Character.glb",
@@ -154,8 +157,8 @@ async function generateCharacters() {
   currentControls.push(myCharacterControl);
 
   // FOR PRERENDER OTHER PLAYERS MODELS
-  for (let i = 0; i < 3; ++i) {
-    const control = await createCharacterControls(
+  for (let i = 0; i < maxOtherUserCount; ++i) {
+    const controls = await createCharacterControls(
       "models/Character.glb",
       orbitControls,
       camera,
@@ -163,8 +166,36 @@ async function generateCharacters() {
       null
     );
 
-    control.model.scale.y *= -1;
-    otherCharacterControls.push(control);
+    controls.model.scale.y *= -1;
+    otherCharacterControls.push(controls);
+  }
+}
+
+function allocateCharacter(clientId: string, position?: THREE.Vector3) {
+  if (currentControls.length >= maxOtherUserCount + 1 /* 나의 케릭터 */) {
+    console.error('정원 초과');
+    return;
+  }
+  const controls = otherCharacterControls.shift();
+  controls.id = clientId;
+  controls.model.scale.y *= -1;
+  if (position) {
+    controls.model.position.x = position.x;
+    controls.model.position.z = position.z;
+  }
+  currentControls.push(controls);
+}
+
+function freeCharacter(clientId: string) {
+  const index = currentControls.findIndex((controls) => controls.id == clientId);
+  if (index !== -1) {
+    const controls = currentControls[index];
+    currentControls.splice(index, 1);
+    othersMouseClickPoints.delete(clientId);
+    controls.model.position.x = 0;
+    controls.model.position.z = 0;
+    controls.model.scale.y *= -1;
+    otherCharacterControls.push(controls);
   }
 }
 
@@ -233,7 +264,6 @@ function updateMouseClickPoint() {
   }
 }
 
-
 const stats = Stats();
 document.body.appendChild(stats.dom);
 
@@ -247,11 +277,11 @@ function animate() {
     socket.emit("mouse-click-point", mouseClickPoint);
   }
   for (let i = 0; i < currentControls.length; ++i) {
-    const control = currentControls[i];
-    if (control.id === "me") {
-      control.update(mixerUpdateDelta, mouseClickPoint);
+    const controls = currentControls[i];
+    if (controls.id === "me") {
+      controls.update(mixerUpdateDelta, mouseClickPoint);
     } else {
-      control.update(mixerUpdateDelta, othersMouseClickPoints.get(control.id));
+      controls.update(mixerUpdateDelta, othersMouseClickPoints.get(controls.id));
     }
   }
   orbitControls.update();
