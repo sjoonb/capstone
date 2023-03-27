@@ -61,6 +61,48 @@ function initSocketListen() {
   setInterval(() => {
     socket.emit("sync-pos", currentControls[0].model.position);
   }, 1000);
+
+  initListenKeyboardInput();
+}
+
+function initListenKeyboardInput() {
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "전송할 메세지를 입력해 주세요";
+  input.style.position = "absolute";
+  input.style.top = "40%";
+  input.style.left = "50%";
+  input.style.transform = "translate(-50%, -50%)";
+  input.style.backgroundColor = "transparent";
+  input.style.border = "none";
+  input.style.outline = "none";
+  input.style.textAlign = "center";
+  input.style.fontSize = "30px";
+  input.style.visibility = "hidden";
+  input.style.width = "100vw";
+  document.body.appendChild(input);
+
+  if (isMobile) {
+    const messageButton = document.createElement("button");
+  }
+
+  input.addEventListener("blur", function () {
+    input.style.visibility = "hidden";
+  });
+
+  document.addEventListener("keypress", (event) => {
+    console.log(event.key);
+    if (event.key === "Enter") {
+      if (document.activeElement === input) {
+        console.log(input.value);
+        input.value = "";
+        input.blur();
+      } else {
+        input.style.visibility = "visible";
+        input.focus();
+      }
+    }
+  });
 }
 
 // SCENE
@@ -173,7 +215,7 @@ async function generateCharacters() {
 
 function allocateCharacter(clientId: string, position?: THREE.Vector3) {
   if (currentControls.length >= maxOtherUserCount + 1 /* 나의 케릭터 */) {
-    console.error('정원 초과');
+    console.error("정원 초과");
     return;
   }
   const controls = otherCharacterControls.shift();
@@ -187,7 +229,9 @@ function allocateCharacter(clientId: string, position?: THREE.Vector3) {
 }
 
 function freeCharacter(clientId: string) {
-  const index = currentControls.findIndex((controls) => controls.id == clientId);
+  const index = currentControls.findIndex(
+    (controls) => controls.id == clientId
+  );
   if (index !== -1) {
     const controls = currentControls[index];
     currentControls.splice(index, 1);
@@ -281,7 +325,10 @@ function animate() {
     if (controls.id === "me") {
       controls.update(mixerUpdateDelta, mouseClickPoint);
     } else {
-      controls.update(mixerUpdateDelta, othersMouseClickPoints.get(controls.id));
+      controls.update(
+        mixerUpdateDelta,
+        othersMouseClickPoints.get(controls.id)
+      );
     }
   }
   orbitControls.update();
