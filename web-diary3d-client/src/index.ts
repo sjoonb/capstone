@@ -116,9 +116,9 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
-camera.position.y = 5;
-camera.position.z = 5;
-camera.position.x = 0;
+camera.position.y = 4;
+camera.position.z = 3;
+camera.position.x = -1;
 
 // RENDERER
 const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
@@ -139,10 +139,13 @@ orbitControls.update();
 
 // LIGHTS
 function light() {
-  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
 
   const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-  dirLight.position.set(-60, 100, -10);
+  dirLight.position.x = 50;
+  dirLight.position.y = 105;
+  dirLight.position.z = 95;
+  // dirLight.position.set(-60, 100, -10);
   dirLight.castShadow = true;
   dirLight.shadow.camera.top = 50;
   dirLight.shadow.camera.bottom = -50;
@@ -153,6 +156,7 @@ function light() {
   dirLight.shadow.mapSize.width = 4096;
   dirLight.shadow.mapSize.height = 4096;
   scene.add(dirLight);
+  scene.add(new THREE.CameraHelper(dirLight.shadow.camera));
 }
 
 light();
@@ -161,14 +165,19 @@ light();
 function generateFloor() {
   // TEXTURES
   const textureLoader = new THREE.TextureLoader();
-  const sandBaseColor = textureLoader.load("./textures/sketchbook.jpeg");
+  const sketchbook = textureLoader.load("./textures/sketchbook.jpeg");
 
-  const WIDTH = 80;
-  const LENGTH = 80;
+  const WIDTH = 60;
+  const LENGTH = 60;
 
   const geometry = new THREE.PlaneGeometry(WIDTH, LENGTH);
-  const material = new THREE.MeshBasicMaterial({
-    map: sandBaseColor,
+  // const material = new THREE.MeshBasicMaterial({
+  //   map: sketchbook,
+  //   normalMap: sketchbook,
+  // });
+  const material = new THREE.MeshStandardMaterial({
+    map: sketchbook,
+    normalMap: sketchbook,
   });
   wrapAndRepeatTexture(material.map);
 
