@@ -1,5 +1,7 @@
 import * as THREE from "three";
+import { TextGeometry, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import { createChatBubble } from "../chatbubble/chatbubble.factory";
 
 export class CharacterControls {
   id: string | null;
@@ -8,6 +10,11 @@ export class CharacterControls {
   animationsMap: Map<string, THREE.AnimationAction> = new Map(); // Run, Idle
   orbitControl: OrbitControls;
   camera: THREE.Camera;
+
+  // chatbubble
+  chatbubble: THREE.Mesh<TextGeometry, any> | null;
+  chatBubbleSize: THREE.Vector3;
+  timer: any;
 
   // state
   currentAction: string;
@@ -100,6 +107,31 @@ export class CharacterControls {
         this.updateCameraTarget(moveX, moveZ);
       }
     }
+
+    if (this.chatbubble) {
+      this.updateChatbubblePosition();
+    }
+  }
+
+  public showChatbubble(text: string, scene: THREE.Scene) {
+    if (this.chatbubble) {
+      scene.remove(this.chatbubble);
+      this.chatbubble = null;
+    }
+
+    clearTimeout(this.timer);
+
+    createChatBubble(scene, text).then((chatbubble) => {
+      this.chatbubble = chatbubble;
+      const boundingBoxHelper = new THREE.Box3().setFromObject(this.chatbubble);
+      this.chatBubbleSize = boundingBoxHelper.getSize(new THREE.Vector3());
+      this.updateChatbubblePosition();
+
+      this.timer = setTimeout(() => {
+        scene.remove(this.chatbubble);
+      this.chatbubble = null;
+      }, 3000);
+    });
   }
 
   private shouldMoveCharacterTo(position: THREE.Vector3): boolean {
@@ -119,5 +151,12 @@ export class CharacterControls {
     this.cameraTarget.y = this.model.position.y + 1;
     this.cameraTarget.z = this.model.position.z;
     this.orbitControl.target = this.cameraTarget;
+  }
+
+  private updateChatbubblePosition() {
+    this.chatbubble.position.x =
+      this.model.position.x - this.chatBubbleSize.x / 2;
+    this.chatbubble.position.z =
+      this.model.position.z + this.chatBubbleSize.z / 2;
   }
 }

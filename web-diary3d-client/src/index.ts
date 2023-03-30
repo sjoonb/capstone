@@ -4,6 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { io, Socket } from "socket.io-client";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { createCharacterControls } from "./character/character.factory";
+import { createChatBubble } from "./chatbubble/chatbubble.factory";
 
 const isMobile =
   navigator.userAgent.match(/Android/i) ||
@@ -77,7 +78,7 @@ function initListenKeyboardInput() {
   input.style.border = "none";
   input.style.outline = "none";
   input.style.textAlign = "center";
-  input.style.fontSize = "30px";
+  input.style.fontSize = "33px";
   input.style.visibility = "hidden";
   input.style.width = "100vw";
   document.body.appendChild(input);
@@ -95,6 +96,7 @@ function initListenKeyboardInput() {
     if (event.key === "Enter") {
       if (document.activeElement === input) {
         console.log(input.value);
+        currentControls[0].showChatbubble(input.value, scene);
         input.value = "";
         input.blur();
       } else {
@@ -145,7 +147,6 @@ function light() {
   dirLight.position.x = 50;
   dirLight.position.y = 105;
   dirLight.position.z = 95;
-  // dirLight.position.set(-60, 100, -10);
   dirLight.castShadow = true;
   dirLight.shadow.camera.top = 50;
   dirLight.shadow.camera.bottom = -50;
@@ -156,7 +157,7 @@ function light() {
   dirLight.shadow.mapSize.width = 4096;
   dirLight.shadow.mapSize.height = 4096;
   scene.add(dirLight);
-  scene.add(new THREE.CameraHelper(dirLight.shadow.camera));
+  // scene.add(new THREE.CameraHelper(dirLight.shadow.camera));
 }
 
 light();
@@ -171,10 +172,6 @@ function generateFloor() {
   const LENGTH = 60;
 
   const geometry = new THREE.PlaneGeometry(WIDTH, LENGTH);
-  // const material = new THREE.MeshBasicMaterial({
-  //   map: sketchbook,
-  //   normalMap: sketchbook,
-  // });
   const material = new THREE.MeshStandardMaterial({
     map: sketchbook,
     normalMap: sketchbook,
@@ -223,7 +220,7 @@ async function generateCharacters() {
 }
 
 function allocateCharacter(clientId: string, position?: THREE.Vector3) {
-  if (currentControls.length >= maxOtherUserCount + 1 /* 나의 케릭터 */) {
+  if (currentControls.length >= maxOtherUserCount + 1 /* 나의 케릭터 수 1 */) {
     console.error("정원 초과");
     return;
   }
