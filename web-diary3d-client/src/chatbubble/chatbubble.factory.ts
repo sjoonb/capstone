@@ -14,7 +14,6 @@ export async function createChatBubble(
     font: font,
     size: 0.35,
     height: 0,
-    curveSegments: 12,
   });
 
   const material = getCachedMaterial();

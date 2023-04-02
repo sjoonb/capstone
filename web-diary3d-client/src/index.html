@@ -2,18 +2,29 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="user-scalable=no" />
     <title>three.js example</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gamja+Flower&display=swap">
 
 
 
     <style>
+      :root {
+        --font-family: 'Gamja Flower', sans-serif;
+      }
+
       body {
         margin: 0px;
       }
+
       input {
-        font-family: 'Gamja Flower', sans-serif;
+        font-family: var(--font-family);
       }
+
+      button {
+        font-family: var(--font-family);
+      }
+
     </style>
   </head>
   <body>

@@ -4,7 +4,6 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { io, Socket } from "socket.io-client";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { createCharacterControls } from "./character/character.factory";
-import { createChatBubble } from "./chatbubble/chatbubble.factory";
 
 const isMobile =
   navigator.userAgent.match(/Android/i) ||
@@ -86,14 +85,10 @@ function initListenKeyboardInput() {
   input.style.border = "none";
   input.style.outline = "none";
   input.style.textAlign = "center";
-  input.style.fontSize = "33px";
+  input.style.fontSize = isMobile ? "66px" : "33px";
   input.style.visibility = "hidden";
   input.style.width = "100vw";
   document.body.appendChild(input);
-
-  if (isMobile) {
-    const messageButton = document.createElement("button");
-  }
 
   input.addEventListener("blur", function () {
     input.style.visibility = "hidden";
@@ -114,6 +109,29 @@ function initListenKeyboardInput() {
       }
     }
   });
+
+  if (isMobile) {
+    const messageBtn = document.createElement("button");
+    messageBtn.style.position = "absolute";
+    messageBtn.style.bottom = "20px";
+    messageBtn.style.right = "20px";
+    messageBtn.style.fontSize = "64px";
+    messageBtn.style.padding = "10px 20px";
+    messageBtn.style.backgroundColor = "transparent";
+    messageBtn.style.border = "none";
+    messageBtn.style.outline = "none";
+    messageBtn.style.boxShadow = "none";
+    messageBtn.innerText = "메세지 전송";
+    document.body.appendChild(messageBtn);
+
+    messageBtn.addEventListener("touchstart", (event) => {
+      console.log("start");
+      event.stopPropagation();
+
+      input.style.visibility = "visible";
+      input.focus();
+    }, { capture: true });
+  }
 }
 
 // SCENE
@@ -134,7 +152,6 @@ camera.position.x = -1;
 // RENDERER
 const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
 renderer.setSize(window.innerWidth, window.innerHeight);
-console.log(window.devicePixelRatio);
 renderer.setPixelRatio(window.devicePixelRatio / (isMobile ? 2 : 1));
 renderer.shadowMap.enabled = true;
 
