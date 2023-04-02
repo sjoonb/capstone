@@ -40,6 +40,16 @@ export class CoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.broadcast.emit('mouse-click-point', { clientId, mouseClickPoint });
   }
 
+  @SubscribeMessage('chat')
+  handleChatEvent(
+    @MessageBody() message: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const clientId = client.id;
+    // console.log(message);
+    client.broadcast.emit('chat', { clientId, message });
+  }
+
   /**
    * 
    * @param position 

@@ -15,8 +15,8 @@ const isMobile =
   navigator.userAgent.match(/BlackBerry/i) ||
   navigator.userAgent.match(/Windows Phone/i);
 
-let currentControls: CharacterControls[] = [];
-const otherCharacterControls: CharacterControls[] = [];
+let allCharacterControls: CharacterControls[] = [];
+const prerenderedOtherCharacterControls: CharacterControls[] = [];
 const othersMouseClickPoints = new Map<string, THREE.Vector3>();
 
 const maxOtherUserCount = 3;
@@ -59,8 +59,16 @@ function initSocketListen() {
     othersMouseClickPoints.set(clientId, position);
   });
 
+  socket.on("chat", (data) => {
+    const { clientId, message } = data;
+    const controls = allCharacterControls.find(
+      (controls) => controls.id == clientId
+    );
+    controls.showChatbubble(message, scene);
+  });
+
   setInterval(() => {
-    socket.emit("sync-pos", currentControls[0].model.position);
+    socket.emit("sync-pos", allCharacterControls[0].model.position);
   }, 1000);
 
   initListenKeyboardInput();
@@ -95,8 +103,9 @@ function initListenKeyboardInput() {
     console.log(event.key);
     if (event.key === "Enter") {
       if (document.activeElement === input) {
-        console.log(input.value);
-        currentControls[0].showChatbubble(input.value, scene);
+        allCharacterControls[0].showChatbubble(input.value, scene);
+        socket.emit("chat", input.value);
+
         input.value = "";
         input.blur();
       } else {
@@ -202,7 +211,7 @@ async function generateCharacters() {
     "me"
   );
 
-  currentControls.push(myCharacterControl);
+  allCharacterControls.push(myCharacterControl);
 
   // FOR PRERENDER OTHER PLAYERS MODELS
   for (let i = 0; i < maxOtherUserCount; ++i) {
@@ -215,37 +224,40 @@ async function generateCharacters() {
     );
 
     controls.model.scale.y *= -1;
-    otherCharacterControls.push(controls);
+    prerenderedOtherCharacterControls.push(controls);
   }
 }
 
 function allocateCharacter(clientId: string, position?: THREE.Vector3) {
-  if (currentControls.length >= maxOtherUserCount + 1 /* 나의 케릭터 수 1 */) {
+  if (
+    allCharacterControls.length >=
+    maxOtherUserCount + 1 /* 나의 케릭터 수 1 */
+  ) {
     console.error("정원 초과");
     return;
   }
-  const controls = otherCharacterControls.shift();
+  const controls = prerenderedOtherCharacterControls.shift();
   controls.id = clientId;
   controls.model.scale.y *= -1;
   if (position) {
     controls.model.position.x = position.x;
     controls.model.position.z = position.z;
   }
-  currentControls.push(controls);
+  allCharacterControls.push(controls);
 }
 
 function freeCharacter(clientId: string) {
-  const index = currentControls.findIndex(
+  const index = allCharacterControls.findIndex(
     (controls) => controls.id == clientId
   );
   if (index !== -1) {
-    const controls = currentControls[index];
-    currentControls.splice(index, 1);
+    const controls = allCharacterControls[index];
+    allCharacterControls.splice(index, 1);
     othersMouseClickPoints.delete(clientId);
     controls.model.position.x = 0;
     controls.model.position.z = 0;
     controls.model.scale.y *= -1;
-    otherCharacterControls.push(controls);
+    prerenderedOtherCharacterControls.push(controls);
   }
 }
 
@@ -326,8 +338,8 @@ function animate() {
     updateMouseClickPoint();
     socket.emit("mouse-click-point", mouseClickPoint);
   }
-  for (let i = 0; i < currentControls.length; ++i) {
-    const controls = currentControls[i];
+  for (let i = 0; i < allCharacterControls.length; ++i) {
+    const controls = allCharacterControls[i];
     if (controls.id === "me") {
       controls.update(mixerUpdateDelta, mouseClickPoint);
     } else {

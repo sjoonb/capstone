@@ -20,7 +20,7 @@ export async function createChatBubble(
   const material = getCachedMaterial();
 
   const bubble = new THREE.Mesh(geometry, material);
-  bubble.position.set(0, 2, 0);
+  bubble.position.set(0, 1.7, 0);
 
   scene.add(bubble);
 
