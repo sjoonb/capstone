@@ -4,6 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { io, Socket } from "socket.io-client";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { createCharacterControls } from "./character/character.factory";
+import { onLoadingDone, setProgress } from "./loading";
 
 const isMobile =
   navigator.userAgent.match(/Android/i) ||
@@ -85,7 +86,7 @@ function initListenKeyboardInput() {
   input.style.border = "none";
   input.style.outline = "none";
   input.style.textAlign = "center";
-  input.style.fontSize = isMobile ? "66px" : "33px";
+  // input.style.fontSize = "33px";
   input.style.visibility = "hidden";
   input.style.width = "100vw";
   document.body.appendChild(input);
@@ -115,7 +116,6 @@ function initListenKeyboardInput() {
     messageBtn.style.position = "absolute";
     messageBtn.style.bottom = "20px";
     messageBtn.style.right = "20px";
-    messageBtn.style.fontSize = "64px";
     messageBtn.style.padding = "10px 20px";
     messageBtn.style.backgroundColor = "transparent";
     messageBtn.style.border = "none";
@@ -124,13 +124,17 @@ function initListenKeyboardInput() {
     messageBtn.innerText = "메세지 전송";
     document.body.appendChild(messageBtn);
 
-    messageBtn.addEventListener("touchstart", (event) => {
-      console.log("start");
-      event.stopPropagation();
+    messageBtn.addEventListener(
+      "touchstart",
+      (event) => {
+        console.log("start");
+        event.stopPropagation();
 
-      input.style.visibility = "visible";
-      input.focus();
-    }, { capture: true });
+        input.style.visibility = "visible";
+        input.focus();
+      },
+      { capture: true }
+    );
   }
 }
 
@@ -152,7 +156,7 @@ camera.position.x = -1;
 // RENDERER
 const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio / (isMobile ? 2 : 1));
+renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
 
 // CONTROLS
@@ -227,6 +231,8 @@ async function generateCharacters() {
     scene,
     "me"
   );
+  renderer.render(scene, camera);
+  setProgress(1 / maxOtherUserCount + 1);
 
   allCharacterControls.push(myCharacterControl);
 
@@ -242,6 +248,9 @@ async function generateCharacters() {
 
     controls.model.scale.y *= -1;
     prerenderedOtherCharacterControls.push(controls);
+
+    renderer.render(scene, camera);
+    setProgress((i + 2) / maxOtherUserCount + 1);
   }
 }
 
@@ -375,6 +384,7 @@ document.body.appendChild(renderer.domElement);
 
 async function load() {
   await generateCharacters();
+  onLoadingDone();
   initSocketListen();
 }
 

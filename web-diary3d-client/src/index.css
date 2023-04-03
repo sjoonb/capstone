@@ -1,0 +1,78 @@
+:root {
+  --font-family: "Gamja Flower", sans-serif;
+}
+
+body {
+  margin: 0px;
+}
+
+input {
+  font-family: var(--font-family);
+  font-size: 32px;
+}
+
+button {
+  font-family: var(--font-family);
+  font-size: 32px;
+}
+
+.fadeOut {
+  opacity: 0;
+}
+
+#splash-view {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-image: url("./textures/sketchbook.jpeg");
+  background-size: 600px;
+  background-repeat: repeat;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+
+#progress-container {
+  position: relative;
+  margin: 70px auto 0 auto;
+  width: 80%;
+  max-width: 800px;
+  height: 20px;
+}
+
+#progress-bar-container {
+  position: absolute;
+  display: block;
+  width: 100%;
+}
+
+#progress-bar {
+  position: absolute;
+  display: block;
+  width: 100%;
+  clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
+  transition: all 0.5s ease-in-out;
+}
+
+#progress-text {
+  width: 80%;
+  height: 50px;
+  margin: 5px auto;
+  text-align: right;
+  font-family: var(--font-family);
+  font-weight: 700;
+  font-size: 24px;
+  transform: translateY(20px);
+  letter-spacing: -1px;
+  color: #1c1c1c;
+}
+
+/* 768px 이상의 데스크탑 화면에서 */
+@media (min-width: 768px) {
+  #progress-text {
+    font-size: 42px;
+    transform: translateY(52px);
+  }
+}
