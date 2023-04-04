@@ -113,25 +113,22 @@ export class CharacterControls {
     }
   }
 
-  public showChatbubble(text: string, scene: THREE.Scene) {
+  public async showChatbubble(text: string, scene: THREE.Scene) {
     if (this.chatbubble) {
       scene.remove(this.chatbubble);
       this.chatbubble = null;
+      clearTimeout(this.timer);
     }
 
-    clearTimeout(this.timer);
+    this.chatbubble = createChatBubble(scene, text);
+    const boundingBoxHelper = new THREE.Box3().setFromObject(this.chatbubble);
+    this.chatBubbleSize = boundingBoxHelper.getSize(new THREE.Vector3());
+    this.updateChatbubblePosition();
 
-    createChatBubble(scene, text).then((chatbubble) => {
-      this.chatbubble = chatbubble;
-      const boundingBoxHelper = new THREE.Box3().setFromObject(this.chatbubble);
-      this.chatBubbleSize = boundingBoxHelper.getSize(new THREE.Vector3());
-      this.updateChatbubblePosition();
-
-      this.timer = setTimeout(() => {
-        scene.remove(this.chatbubble);
+    this.timer = setTimeout(() => {
+      scene.remove(this.chatbubble);
       this.chatbubble = null;
-      }, 3000);
-    });
+    }, 3000);
   }
 
   private shouldMoveCharacterTo(position: THREE.Vector3): boolean {

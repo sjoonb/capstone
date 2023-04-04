@@ -2,14 +2,18 @@ import { Font } from "three";
 import THREE = require("three");
 
 let fontLoader = new THREE.FontLoader();
-let fontCache: Font = null;
 let materialCache: THREE.MeshBasicMaterial = null;
+let font: THREE.Font;
 
-export async function createChatBubble(
-  scene: THREE.Scene,
-  text: string,
-) {
-  const font = await loadCachedFont("../resources/Gamja Flower_Regular.json");
+export async function loadFont() {
+  font = await fontLoader.loadAsync("../resources/Gamja Flower_Regular.json");
+}
+
+export function createChatBubble(scene: THREE.Scene, text: string) {
+  if (font == null) {
+    loadFont();
+  }
+
   const geometry = new THREE.TextGeometry(text, {
     font: font,
     size: 0.35,
@@ -25,29 +29,6 @@ export async function createChatBubble(
 
   return bubble;
 }
-
-async function loadCachedFont(fontPath: string) {
-  if (!fontCache) {
-    fontCache = await loadFont(fontPath);
-  }
-  return fontCache;
-}
-
-async function loadFont(url: string): Promise<Font> {
-  return new Promise((resolve, reject) => {
-    fontLoader.load(
-      url,
-      (font: any) => {
-        resolve(font);
-      },
-      undefined,
-      (error) => {
-        reject(error);
-      }
-    );
-  });
-}
-
 
 function getCachedMaterial() {
   if (!materialCache) {

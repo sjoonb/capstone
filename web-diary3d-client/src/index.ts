@@ -5,6 +5,7 @@ import { io, Socket } from "socket.io-client";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { createCharacterControls } from "./character/character.factory";
 import { onLoadingDone, setProgress } from "./loading";
+import { loadFont } from "./chatbubble/chatbubble.factory";
 
 const isMobile =
   navigator.userAgent.match(/Android/i) ||
@@ -384,6 +385,7 @@ document.body.appendChild(renderer.domElement);
 
 async function load() {
   await generateCharacters();
+  await loadFont();
   onLoadingDone();
   initSocketListen();
 }
