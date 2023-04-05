@@ -10,13 +10,16 @@ export async function createCharacterControls(
   orbitControls: OrbitControls,
   camera: THREE.Camera,
   scene: THREE.Scene,
-  id: string | null,
+  id: string | null
 ) {
   const gltf = await loadGLB(glbUrl);
-  const model = gltf.scene; 
+  const model = gltf.scene;
 
   model.traverse(function (object: any) {
-    if (object.isMesh) object.castShadow = true;
+    if (object.isMesh) {
+      object.castShadow = true;
+      object.renderOrder = 10;
+    }
   });
   scene.add(model);
 

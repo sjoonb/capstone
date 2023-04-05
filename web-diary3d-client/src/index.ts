@@ -6,6 +6,7 @@ import Stats from "three/examples/jsm/libs/stats.module";
 import { createCharacterControls } from "./character/character.factory";
 import { onLoadingDone, setProgress } from "./loading";
 import { loadFont } from "./chatbubble/chatbubble.factory";
+import { sampleImages } from "./samples";
 
 const isMobile =
   navigator.userAgent.match(/Android/i) ||
@@ -69,7 +70,7 @@ function initSocketListen() {
   });
 
   setInterval(() => {
-    socket.emit("sync-pos", allCharacterControls[0].model.position);
+    // socket.emit("sync-pos", allCharacterControls[0].model.position);
   }, 1000);
 
   initListenKeyboardInput();
@@ -193,10 +194,12 @@ function light() {
 
 light();
 
+// TEXTURES
+const textureLoader = new THREE.TextureLoader();
+
 // FLOOR
+let floor: THREE.Mesh;
 function generateFloor() {
-  // TEXTURES
-  const textureLoader = new THREE.TextureLoader();
   const sketchbook = textureLoader.load("./textures/sketchbook.jpeg");
 
   const WIDTH = 60;
@@ -209,19 +212,51 @@ function generateFloor() {
   });
   wrapAndRepeatTexture(material.map);
 
-  const floor = new THREE.Mesh(geometry, material);
+  floor = new THREE.Mesh(geometry, material);
   floor.receiveShadow = true;
   floor.rotation.x = -Math.PI / 2;
   floor.name = "floor";
+  const texture = material.map;
+  const image = texture.image;
+  console.log(image);
+
   scene.add(floor);
+}
+
+// STICKERS
+async function generateSampleImages() {
+  for (let i = 0; i < sampleImages.length; ++i) {
+    const sampleImage = sampleImages[i];
+    const texture = await textureLoader.loadAsync(sampleImage.url);
+
+    const img = texture.image;
+    const geometry = new THREE.PlaneGeometry(img.width / 200, img.height / 200);
+    const material = new THREE.MeshStandardMaterial({
+      map: texture,
+      roughness: 0.3,
+      metalness: 0.3,
+      transparent: true,
+    });
+    const image = new THREE.Mesh(geometry, material);
+    image.rotation.x = -Math.PI / 2;
+    image.position.y += 0.001;
+    const boundingBoxHelper = new THREE.Box3().setFromObject(image);
+    const size = boundingBoxHelper.getSize(new THREE.Vector3());
+    image.receiveShadow = true;
+
+    scene.add(image);
+
+    renderer.render(scene, camera);
+
+    image.position.x = sampleImage.x / 200 - 30 + size.x / 2;
+    image.position.z = sampleImage.z / 200 - 30 + size.z / 2;
+  }
 }
 
 function wrapAndRepeatTexture(map: THREE.Texture) {
   map.wrapS = map.wrapT = THREE.RepeatWrapping;
   map.repeat.x = map.repeat.y = 10;
 }
-
-generateFloor();
 
 // CHARACTERS
 async function generateCharacters() {
@@ -384,6 +419,8 @@ function animate() {
 document.body.appendChild(renderer.domElement);
 
 async function load() {
+  generateFloor();
+  await generateSampleImages();
   await generateCharacters();
   await loadFont();
   onLoadingDone();
