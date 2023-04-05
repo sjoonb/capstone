@@ -17,7 +17,13 @@ export class CoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
 
   handleConnection(client: any, ...args: any[]) {
+    const alreadyConnected = Object.keys(this.characterPositions).length;
     const clientId = client.id;
+    if (alreadyConnected >= 4) {
+      client.disconnect();
+      return;
+    }
+    
     client.emit('others-pos', this.characterPositions);
     this.characterPositions[clientId] = { x: 0, y: 0, z: 0 };
     client.broadcast.emit('user-join', clientId);
@@ -46,7 +52,6 @@ export class CoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ) {
     const clientId = client.id;
-    // console.log(message);
     client.broadcast.emit('chat', { clientId, message });
   }
 

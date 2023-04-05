@@ -35,6 +35,11 @@ function initSocketListen() {
     console.log("connected");
   });
 
+  socket.on("disconnect", () => {
+    alert("정원이 초과되어 서버에 접속할 수 없습니다. 오프라인 모드로 전환됩니다.");
+    console.log("disconnected");
+  });
+
   socket.on(
     "others-pos",
     (characterPositions: { [key: string]: THREE.Vector3 }) => {
@@ -70,7 +75,7 @@ function initSocketListen() {
   });
 
   setInterval(() => {
-    // socket.emit("sync-pos", allCharacterControls[0].model.position);
+    socket.emit("sync-pos", allCharacterControls[0].model.position);
   }, 1000);
 
   initListenKeyboardInput();
