@@ -18,7 +18,9 @@ const isMobile =
 
 let allCharacterControls: CharacterControls[] = [];
 const prerenderedOtherCharacterControls: CharacterControls[] = [];
+let mouseClickPoint: THREE.Vector3 | null = null;
 const othersMouseClickPoints = new Map<string, THREE.Vector3>();
+let isFull = false;
 
 const maxOtherUserCount = 3;
 const characterRenderProgressRatio = 0.3;
@@ -29,17 +31,29 @@ export let socket: Socket;
 function initSocketListen() {
   socket = io("https://share-diaray-server-juzsiiiivq-an.a.run.app/", {
     transports: ["websocket"],
+    reconnection: true,
   });
 
   socket.on("connect", () => {
-    console.log("connected");
+    socket.emit("init-pos", allCharacterControls[0].model.position);
   });
 
-  socket.on("disconnect", () => {
+  socket.on("full", () => {
+    console.log("full");
     alert(
       "정원이 초과되어 서버에 접속할 수 없습니다. 오프라인 모드로 전환됩니다."
     );
-    console.log("disconnected");
+    isFull = true;
+    socket.disconnect();
+  });
+
+  socket.on("disconnect", () => {
+    freeAllOthersCharacter();
+    if (!isFull) {
+      alert("연결이 해제되었습니다. 새로고침 하여 다시 시도해주세요.");
+    }
+    console.log(othersMouseClickPoints);
+    socket.disconnect();
   });
 
   socket.on(
@@ -52,11 +66,14 @@ function initSocketListen() {
     }
   );
 
-  socket.on("user-join", (clientId) => {
-    allocateCharacter(clientId);
+  socket.on("user-join", (data) => {
+    console.log("user-join");
+    const { clientId, position } = data;
+    allocateCharacter(clientId, position);
   });
 
   socket.on("user-leave", (clientId) => {
+    console.log("user-leave");
     freeCharacter(clientId);
   });
 
@@ -236,7 +253,7 @@ async function generateSampleImages() {
     const sampleImage = sampleImages[i];
     const texture = await textureLoader.loadAsync(sampleImage.url);
 
-    setProgress((i+1 / sampleImages.length) * textureLoadingProgressRatio);
+    setProgress((i + 1 / sampleImages.length) * textureLoadingProgressRatio);
 
     const img = texture.image;
     const geometry = new THREE.PlaneGeometry(img.width / 200, img.height / 200);
@@ -310,7 +327,6 @@ function allocateCharacter(clientId: string, position?: THREE.Vector3) {
     allCharacterControls.length >=
     maxOtherUserCount + 1 /* 나의 케릭터 수 1 */
   ) {
-    console.error("정원 초과");
     return;
   }
   const controls = prerenderedOtherCharacterControls.shift();
@@ -323,25 +339,36 @@ function allocateCharacter(clientId: string, position?: THREE.Vector3) {
   allCharacterControls.push(controls);
 }
 
+function _freeCharacter(controls: CharacterControls) {
+  controls.model.position.x = 0;
+  controls.model.position.z = 0;
+  controls.model.scale.y *= -1;
+  prerenderedOtherCharacterControls.push(controls);
+}
+
 function freeCharacter(clientId: string) {
   const index = allCharacterControls.findIndex(
     (controls) => controls.id == clientId
   );
   if (index !== -1) {
     const controls = allCharacterControls[index];
+    _freeCharacter(controls);
     allCharacterControls.splice(index, 1);
     othersMouseClickPoints.delete(clientId);
-    controls.model.position.x = 0;
-    controls.model.position.z = 0;
-    controls.model.scale.y *= -1;
-    prerenderedOtherCharacterControls.push(controls);
   }
+}
+
+function freeAllOthersCharacter() {
+  for (let i = 1; i < allCharacterControls.length; ++i) {
+    _freeCharacter(allCharacterControls[i]);
+  }
+  allCharacterControls = [allCharacterControls[0]];
+  othersMouseClickPoints.clear();
 }
 
 // CONTROL MOUSE & MOBILE TOUCH
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
-let mouseClickPoint: THREE.Vector3 | null = null;
 let isMouseDown = false;
 
 if (isMobile) {

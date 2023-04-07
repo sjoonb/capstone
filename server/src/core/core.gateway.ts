@@ -18,16 +18,11 @@ export class CoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   handleConnection(client: any, ...args: any[]) {
     const alreadyConnected = Object.keys(this.characterPositions).length;
-    const clientId = client.id;
     if (alreadyConnected >= 4) {
-      client.disconnect();
+      client.emit('full');
       return;
     }
-
     client.emit('others-pos', this.characterPositions);
-    this.characterPositions[clientId] = { x: 0, y: 0, z: 0 };
-    client.broadcast.emit('user-join', clientId);
-    console.log(this.characterPositions);
   }
 
   handleDisconnect(client: any) {
@@ -55,6 +50,16 @@ export class CoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.broadcast.emit('chat', { clientId, message });
   }
 
+  @SubscribeMessage('init-pos')
+  handleInitPosition(
+    @MessageBody() position: Vector3,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const clientId = client.id;
+    this.characterPositions[clientId] = position;
+    client.broadcast.emit('user-join', { clientId, position });
+  }
+
   /**
    * 
    * @param position 
@@ -63,7 +68,6 @@ export class CoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
    네트워크 지연시간 만큼의 desync 가능성이 존재한다. 서버에서 직접 mouse click point 를 
    통해 position 을 계산하는 방법도 고려해야 한다.
    */
-
   @SubscribeMessage('sync-pos')
   handleSyncPosition(
     @MessageBody() position: Vector3,
