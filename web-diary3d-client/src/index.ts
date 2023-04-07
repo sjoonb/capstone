@@ -21,8 +21,8 @@ const prerenderedOtherCharacterControls: CharacterControls[] = [];
 const othersMouseClickPoints = new Map<string, THREE.Vector3>();
 
 const maxOtherUserCount = 3;
-
-console.log(process.env.NODE_ENV);
+const characterRenderProgressRatio = 0.3;
+const textureLoadingProgressRatio = 1 - characterRenderProgressRatio;
 
 // SOCKET
 export let socket: Socket;
@@ -236,6 +236,8 @@ async function generateSampleImages() {
     const sampleImage = sampleImages[i];
     const texture = await textureLoader.loadAsync(sampleImage.url);
 
+    setProgress((i+1 / sampleImages.length) * textureLoadingProgressRatio);
+
     const img = texture.image;
     const geometry = new THREE.PlaneGeometry(img.width / 200, img.height / 200);
     const material = new THREE.MeshStandardMaterial({
@@ -275,7 +277,10 @@ async function generateCharacters() {
     "me"
   );
   renderer.render(scene, camera);
-  setProgress(1 / maxOtherUserCount + 1);
+  setProgress(
+    (1 / maxOtherUserCount + 1) * characterRenderProgressRatio +
+      textureLoadingProgressRatio
+  );
 
   allCharacterControls.push(myCharacterControl);
 
@@ -293,7 +298,10 @@ async function generateCharacters() {
     prerenderedOtherCharacterControls.push(controls);
 
     renderer.render(scene, camera);
-    setProgress((i + 2) / maxOtherUserCount + 1);
+    setProgress(
+      ((1 + 2) / maxOtherUserCount + 1) * characterRenderProgressRatio +
+        textureLoadingProgressRatio
+    );
   }
 }
 
