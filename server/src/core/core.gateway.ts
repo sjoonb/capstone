@@ -10,7 +10,7 @@ import {
 import { Socket, Server } from 'socket.io';
 import { Vector3 } from './core.entity';
 
-@WebSocketGateway(80)
+@WebSocketGateway({ host: '0.0.0.0' })
 export class CoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private characterPositions: { [key: string]: Vector3 } = {};
 
@@ -23,7 +23,7 @@ export class CoreGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.disconnect();
       return;
     }
-    
+
     client.emit('others-pos', this.characterPositions);
     this.characterPositions[clientId] = { x: 0, y: 0, z: 0 };
     client.broadcast.emit('user-join', clientId);

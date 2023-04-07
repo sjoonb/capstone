@@ -2,7 +2,6 @@ import { CharacterControls } from "./character/character.control";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { io, Socket } from "socket.io-client";
-import Stats from "three/examples/jsm/libs/stats.module";
 import { createCharacterControls } from "./character/character.factory";
 import { onLoadingDone, setProgress } from "./loading";
 import { loadFont } from "./chatbubble/chatbubble.factory";
@@ -23,12 +22,13 @@ const othersMouseClickPoints = new Map<string, THREE.Vector3>();
 
 const maxOtherUserCount = 3;
 
+console.log(process.env.NODE_ENV);
+
 // SOCKET
 export let socket: Socket;
 function initSocketListen() {
-  socket = io(process.env.SOCKET_URI, {
+  socket = io("https://share-diaray-server-juzsiiiivq-an.a.run.app/", {
     transports: ["websocket"],
-    closeOnBeforeunload: false,
   });
 
   socket.on("connect", () => {
@@ -36,7 +36,9 @@ function initSocketListen() {
   });
 
   socket.on("disconnect", () => {
-    alert("정원이 초과되어 서버에 접속할 수 없습니다. 오프라인 모드로 전환됩니다.");
+    alert(
+      "정원이 초과되어 서버에 접속할 수 없습니다. 오프라인 모드로 전환됩니다."
+    );
     console.log("disconnected");
   });
 
@@ -393,8 +395,8 @@ function updateMouseClickPoint() {
   }
 }
 
-const stats = Stats();
-document.body.appendChild(stats.dom);
+// // const stats = Stats();
+// document.body.appendChild(stats.dom);
 
 const clock = new THREE.Clock();
 
@@ -417,7 +419,7 @@ function animate() {
     }
   }
   orbitControls.update();
-  stats.update();
+  // stats.update();
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
