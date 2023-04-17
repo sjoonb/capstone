@@ -10,6 +10,7 @@ export class CharacterControls {
   animationsMap: Map<string, THREE.AnimationAction> = new Map(); // Run, Idle
   orbitControl: OrbitControls;
   camera: THREE.Camera;
+  font: THREE.Font;
 
   // chatbubble
   chatbubble: THREE.Mesh<TextGeometry, any> | null;
@@ -35,6 +36,7 @@ export class CharacterControls {
     animationsMap: Map<string, THREE.AnimationAction>,
     orbitControl: OrbitControls,
     camera: THREE.Camera,
+    font: THREE.Font,
     currentAction: string
   ) {
     this.id = id;
@@ -49,6 +51,7 @@ export class CharacterControls {
     });
     this.orbitControl = orbitControl;
     this.camera = camera;
+    this.font = font;
     if (id === "me") {
       this.updateCameraTarget(0, 0);
     }
