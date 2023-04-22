@@ -1,18 +1,38 @@
 import * as THREE from "three";
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { Character } from "../character/Character";
 import { SampleImage } from "../sampleImages";
 export class SceneController {
   private sketchbookTexture: THREE.Texture;
-  private models: GLTF[];
   private raycaster = new THREE.Raycaster();
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
+  private loadingBar: HTMLElement = document.getElementById("progress-bar");
+  private _scene: THREE.Scene;
+  private _camera: THREE.PerspectiveCamera;
+  private _renderer: THREE.WebGLRenderer;
   private isMobile: boolean;
   private floor: THREE.Mesh;
-  private font: THREE.Font;
+  private _font: THREE.Font;
+  private _models: GLTF[];
+  private _sampleImages: SampleImage[];
+  private _sampleImageTextures: THREE.Texture[];
+
+  get camera(): THREE.PerspectiveCamera {
+    return this._camera;
+  }
+
+  get scene(): THREE.Scene {
+    return this._scene;
+  }
+  get renderer(): THREE.WebGLRenderer {
+    return this._renderer;
+  }
+
+  get font(): THREE.Font {
+    return this._font;
+  }
+
+  get models(): GLTF[] {
+    return this._models;
+  }
 
   constructor({ isMobile }: { isMobile: boolean }) {
     this.isMobile = isMobile;
@@ -22,33 +42,33 @@ export class SceneController {
     sketchbookUrl,
     fontUrl,
     modelUrl,
+    sampleImages,
     maxUserCount,
   }: {
     sketchbookUrl: string;
     fontUrl: string;
     modelUrl: string;
+    sampleImages: SampleImage[];
     maxUserCount: number;
   }) {
+    this._sampleImages = sampleImages;
+
     const loadingManager = new THREE.LoadingManager();
     const textureLoader = new THREE.TextureLoader(loadingManager);
     const gltfLoader = new GLTFLoader(loadingManager);
     const fontLoader = new THREE.FontLoader(loadingManager);
 
-    loadingManager.onLoad = function ( ) {
-      console.log( 'Loading complete!');
+    loadingManager.onLoad = () => {
+      this.removeSplashView();
     };
-    
-    
-    loadingManager.onProgress = function ( url, itemsLoaded, itemsTotal ) {
-    
-      console.log( 'Loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.' );
-    
+
+    loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
+      this.setProgress(itemsLoaded / itemsTotal);
+      console.log(itemsLoaded / itemsTotal);
     };
-    
-    loadingManager.onError = function ( url ) {
-    
-      console.log( 'There was an error loading ' + url );
-    
+
+    loadingManager.onError = function (url) {
+      console.error("There was an error loading " + url);
     };
 
     try {
@@ -61,11 +81,16 @@ export class SceneController {
         promises.push(gltfLoader.loadAsync(modelUrl));
       }
 
+      for (let i = 0; i < sampleImages.length; ++i) {
+        promises.push(textureLoader.loadAsync(sampleImages[i].url));
+      }
+
       const results = await Promise.all(promises);
 
       this.sketchbookTexture = results[0];
-      this.font = results[1];
-      this.models = results.slice(2);
+      this._font = results[1];
+      this._models = results.slice(2, 2 + maxUserCount);
+      this._sampleImageTextures = results.slice(2 + maxUserCount);
 
       console.log("All resources loaded!");
     } catch (error) {
@@ -79,58 +104,14 @@ export class SceneController {
     this.initRenderer();
     this.addLight();
     this.addFloor();
+    this.addSampleImages();
     document.body.appendChild(this.renderer.domElement);
     window.addEventListener("resize", () => this.onWindowResize());
-  }
-
-  // public async loadFont(url: string) {
-  //   this.font = await this.fontLoader.loadAsync(url);
-  // }
-
-  // public async loadSampleImages(sampleImages: SampleImage[]) {
-  //   for (let i = 0; i < sampleImages.length; ++i) {
-  //     const sampleImage = sampleImages[i];
-  //     await this.loadSampleImage(sampleImage);
-  //   }
-  // }
-
-  public getCamera(): THREE.PerspectiveCamera {
-    return this.camera;
-  }
-
-  public getScene(): THREE.Scene {
-    return this.scene;
-  }
-
-  public geRendererDomElement(): HTMLCanvasElement {
-    return this.renderer.domElement;
   }
 
   public render() {
     this.renderer.render(this.scene, this.camera);
   }
-
-  // public async addCharacter({
-  //   id,
-  //   orbitControls,
-  // }: {
-  //   id: string | null;
-  //   orbitControls: OrbitControls;
-  // }) {
-  //   const gltf = await this.loadGLB("models/Character.glb");
-  //   const character = new Character(
-  //     id,
-  //     orbitControls,
-  //     this.camera,
-  //     this.font,
-  //     gltf,
-  //     "Idle"
-  //   );
-  //   this.scene.add(character.model);
-
-  //   return character;
-  // }
-
   public raycastMouseClickPoint(mouse: THREE.Vector2): THREE.Vector3 | null {
     this.raycaster.setFromCamera(mouse, this.camera);
     const intersects = this.raycaster.intersectObject(
@@ -145,31 +126,31 @@ export class SceneController {
   }
 
   private initScene() {
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0xa8def0);
+    this._scene = new THREE.Scene();
+    this._scene.background = new THREE.Color(0xa8def0);
   }
 
   private initCamera() {
-    this.camera = new THREE.PerspectiveCamera(
+    this._camera = new THREE.PerspectiveCamera(
       45,
       window.innerWidth / window.innerHeight,
       0.1,
       1000
     );
-    this.camera.position.y = 4;
-    this.camera.position.z = 3;
-    this.camera.position.x = -1;
+    this._camera.position.y = 4;
+    this._camera.position.z = 3;
+    this._camera.position.x = -1;
   }
 
   private initRenderer() {
-    this.renderer = new THREE.WebGLRenderer({ antialias: !this.isMobile });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    this.renderer.shadowMap.enabled = true;
+    this._renderer = new THREE.WebGLRenderer({ antialias: !this.isMobile });
+    this._renderer.setSize(window.innerWidth, window.innerHeight);
+    this._renderer.setPixelRatio(window.devicePixelRatio);
+    this._renderer.shadowMap.enabled = true;
   }
 
   private addLight() {
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    this._scene.add(new THREE.AmbientLight(0xffffff, 0.75));
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 1);
     dirLight.position.x = 50;
@@ -184,7 +165,7 @@ export class SceneController {
     dirLight.shadow.camera.far = 200;
     dirLight.shadow.mapSize.width = 4096;
     dirLight.shadow.mapSize.height = 4096;
-    this.scene.add(dirLight);
+    this._scene.add(dirLight);
   }
 
   private addFloor() {
@@ -206,7 +187,7 @@ export class SceneController {
     const image = texture.image;
     console.log(image);
 
-    this.scene.add(this.floor);
+    this._scene.add(this.floor);
   }
 
   private wrapAndRepeatTexture(map: THREE.Texture) {
@@ -214,46 +195,52 @@ export class SceneController {
     map.repeat.x = map.repeat.y = 10;
   }
 
-  // private async loadGLB(url: string): Promise<GLTF> {
-  // return new Promise((resolve, reject) => {
-  //   this.gltfLoader.load(
-  //     url,
-  //     (gltf: GLTF) => {
-  //       resolve(gltf);
-  //     },
-  //     undefined,
-  //     (error) => {
-  //       reject(error);
-  //     }
-  //   );
-  // });
-  // }
-
-  private async loadSampleImage(sampleImage: SampleImage) {
-    // const texture = await this.textureLoader.loadAsync(sampleImage.url);
-    // const img = texture.image;
-    // const geometry = new THREE.PlaneGeometry(img.width / 200, img.height / 200);
-    // const material = new THREE.MeshStandardMaterial({
-    //   map: texture,
-    //   roughness: 0.3,
-    //   metalness: 0.3,
-    //   transparent: true,
-    // });
-    // const image = new THREE.Mesh(geometry, material);
-    // image.rotation.x = -Math.PI / 2;
-    // image.position.y += 0.001;
-    // const boundingBoxHelper = new THREE.Box3().setFromObject(image);
-    // const size = boundingBoxHelper.getSize(new THREE.Vector3());
-    // image.receiveShadow = true;
-    // this.scene.add(image);
-    // this.renderer.render(this.scene, this.camera);
-    // image.position.x = sampleImage.x / 200 - 30 + size.x / 2;
-    // image.position.z = sampleImage.z / 200 - 30 + size.z / 2;
+  private async addSampleImages() {
+    for (let i = 0; i < this._sampleImageTextures.length; ++i) {
+      const sampleImage = this._sampleImages[i];
+      const texture = this._sampleImageTextures[i];
+      const img = texture.image;
+      const geometry = new THREE.PlaneGeometry(
+        img.width / 200,
+        img.height / 200
+      );
+      const material = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.3,
+        metalness: 0.3,
+        transparent: true,
+      });
+      const image = new THREE.Mesh(geometry, material);
+      image.rotation.x = -Math.PI / 2;
+      image.position.y += 0.001;
+      const boundingBoxHelper = new THREE.Box3().setFromObject(image);
+      const size = boundingBoxHelper.getSize(new THREE.Vector3());
+      image.receiveShadow = true;
+      this.scene.add(image);
+      this.renderer.render(this.scene, this.camera);
+      image.position.x = sampleImage.x / 200 - 30 + size.x / 2;
+      image.position.z = sampleImage.z / 200 - 30 + size.z / 2;
+    }
   }
 
   private onWindowResize() {
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this._camera.aspect = window.innerWidth / window.innerHeight;
+    this._camera.updateProjectionMatrix();
+    this._renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+  private removeSplashView() {
+    const element = document.getElementById("splash-view");
+    element.classList.add("fadeOut");
+    setTimeout(() => {
+      element.remove();
+    }, 1000);
+  }
+
+  private setProgress(value: number) {
+    value = Math.min(1, Math.max(0, value));
+    this.loadingBar.style.clipPath = `polygon(0 0, ${value * 100}% 0, ${
+      value * 100
+    }% 100%, 0% 100%)`;
   }
 }

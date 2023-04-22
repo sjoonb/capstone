@@ -1,10 +1,6 @@
-// import { NetworkController } from "./controllers/NetworkController";
-// import { MessageController } from "./controllers/MessageController";
-// import { KeyboardInputController } from "./controllers/KeyboardInputController";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { SceneController } from "./controllers/SceneController";
 import { GameController } from "./controllers/GameController";
-// import { CharacterControls } from "./character/CharacterControls";
 import { isMobile } from "./utils";
 import {
   DesktopMouseInputController,
@@ -19,35 +15,27 @@ import { sampleImages } from "./sampleImages";
 
 class Main {
   private gameController: GameController;
-  private orbitControls: OrbitControls;
-  private maxUserCount: number;
 
   constructor({ maxUserCount }: { maxUserCount: number }) {
-    this.maxUserCount = maxUserCount;
-    this.init();
+    this.init(maxUserCount);
   }
 
-  private async init() {
+  private async init(maxUserCount: number) {
     // Initialize the scene
     const sceneController = new SceneController({ isMobile: isMobile });
 
     // Load scene related files
-    // await sceneController.loadFont("../resources/Do Hyeon_Regular.json");
-    // await sceneController.loadSampleImages(sampleImages);
-    // await sceneController.loadFont("../resources/Do Hyeon_Regular.json");
     await sceneController.loadResources({
       sketchbookUrl: "./textures/sketchbook.jpeg",
       fontUrl: "../resources/Do Hyeon_Regular.json",
       modelUrl: "models/Character.glb",
-      maxUserCount: this.maxUserCount,
+      sampleImages: sampleImages,
+      maxUserCount: maxUserCount,
     });
 
     sceneController.init();
 
-    this.initOrbitControls(
-      sceneController.getCamera(),
-      sceneController.geRendererDomElement()
-    );
+    const orbitControls = this.initOrbitControls(sceneController);
 
     const mouseInputController = isMobile
       ? new MobileMouseInputController()
@@ -63,42 +51,41 @@ class Main {
 
     // Initialize game controller
     this.gameController = new GameController({
+      orbitControls: orbitControls,
       sceneController: sceneController,
       mouseInputController: mouseInputController,
       messageController: messageController,
       networkController: networkController,
+      maxUserCount: maxUserCount,
     });
 
-    // await this.gameController.initCharacters({
-    //   maxCharacterCount: this.maxUserCount,
-    //   orbitControls: this.orbitControls,
-    // });
-
-    // this.gameController.connectToServer();
-    // this.gameController.startListenOnMessageSent();
+    this.gameController.connectToServer();
+    this.gameController.startListenOnMessageSent();
 
     // Start the game loop
     this.gameLoop();
   }
 
-  private initOrbitControls(
-    camera: THREE.Camera,
-    domElement: HTMLCanvasElement
-  ) {
-    this.orbitControls = new OrbitControls(camera, domElement);
-    this.orbitControls.enableDamping = true;
-    this.orbitControls.minDistance = 5;
-    this.orbitControls.maxDistance = 15;
-    this.orbitControls.enablePan = false;
-    this.orbitControls.enableRotate = false;
-    this.orbitControls.maxPolarAngle = Math.PI / 2 - 0.05;
-    this.orbitControls.update();
+
+
+  private initOrbitControls(sceneController: SceneController): OrbitControls {
+    const controls = new OrbitControls(
+      sceneController.camera,
+      sceneController.renderer.domElement,
+    );
+    controls.enableDamping = true;
+    controls.minDistance = 5;
+    controls.maxDistance = 15;
+    controls.enablePan = false;
+    controls.enableRotate = false;
+    controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    controls.update();
+    return controls;
   }
 
   private gameLoop() {
     // Update all controllers
     this.gameController.update();
-    this.orbitControls.update();
 
     // Request the next frame
     requestAnimationFrame(() => this.gameLoop());

@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { TextGeometry, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
-// import { createChatBubble } from "../chatbubble/chatbubble.factory";
 
 export class Character {
   public id: string | null;

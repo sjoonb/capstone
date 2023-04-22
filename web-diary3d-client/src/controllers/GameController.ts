@@ -7,6 +7,7 @@ import { MessageController as MessageController } from "./MessageController";
 import { NetworkController } from "./NetworkController";
 
 export class GameController {
+  private orbitControls: OrbitControls;
   private sceneController: SceneController;
   private mouseInputController: MouseInputController;
   private messageController: MessageController;
@@ -21,52 +22,31 @@ export class GameController {
     THREE.Vector3
   >();
   private isServerFull: boolean;
+  private maxUserCount: number;
 
   constructor({
+    orbitControls,
     sceneController,
     mouseInputController,
     messageController,
     networkController,
+    maxUserCount,
   }: {
+    orbitControls: OrbitControls;
     sceneController: SceneController;
     mouseInputController: MouseInputController;
     messageController: MessageController;
     networkController: NetworkController;
+    maxUserCount: number;
   }) {
+    this.orbitControls = orbitControls;
     this.sceneController = sceneController;
     this.mouseInputController = mouseInputController;
     this.messageController = messageController;
     this.networkController = networkController;
+    this.maxUserCount = maxUserCount;
+    this.initCharacters();
   }
-
-  // public async initCharacters({
-  //   maxCharacterCount,
-  //   orbitControls,
-  // }: {
-  //   maxCharacterCount: number;
-  //   orbitControls: OrbitControls;
-  // }) {
-  //   this.myCharacter = await this.sceneController.addCharacter({
-  //     id: "me",
-  //     orbitControls: orbitControls,
-  //   });
-  //   this.sceneController.render();
-  //   this.allCharacters.push(this.myCharacter);
-
-  //   for (let i = 0; i < maxCharacterCount - 1; ++i) {
-  //     const otherCharacter = await this.sceneController.addCharacter({
-  //       id: null,
-  //       orbitControls: orbitControls,
-  //     });
-  //     otherCharacter.model.scale.y *= -1;
-  //     this.preservedOtherCharacters.push(otherCharacter);
-  //     this.sceneController.render();
-  //     //   setProgress(
-  //     //     ((1 + 2) / maxOtherUserCount + 1) * characterRenderProgressRatio +
-  //     //       textureLoadingProgressRatio
-  //     //   );
-  //   }
-  // }
 
   public connectToServer() {
     this.networkController.initSocketService({
@@ -111,14 +91,14 @@ export class GameController {
         const character = this.allCharacters.find(
           (controls) => controls.id == clientId
         );
-        character.showChatbubble(message, this.sceneController.getScene());
+        character.showChatbubble(message, this.sceneController.scene);
       },
     });
   }
 
   public startListenOnMessageSent() {
     this.messageController.onMessageSent((message) => {
-      this.myCharacter.showChatbubble(message, this.sceneController.getScene());
+      this.myCharacter.showChatbubble(message, this.sceneController.scene);
       this.networkController.emitChatMessage(message);
     });
   }
@@ -129,7 +109,7 @@ export class GameController {
       this.mouseClickPoint = this.sceneController.raycastMouseClickPoint(
         this.mouseInputController.getMouse()
       );
-      this.networkController.emitMouseClickPoint(this.mouseClickPoint);
+      // this.networkController.emitMouseClickPoint(this.mouseClickPoint);
     }
     for (let i = 0; i < this.allCharacters.length; ++i) {
       const controls = this.allCharacters[i];
@@ -143,7 +123,44 @@ export class GameController {
       }
     }
 
+    this.orbitControls.update();
     this.sceneController.render();
+  }
+
+  private initCharacters() {
+    const models = this.sceneController.models;
+    const camera = this.sceneController.camera;
+    const font = this.sceneController.font;
+    this.myCharacter = new Character(
+      "me",
+      this.orbitControls,
+      camera,
+      font,
+      models[0],
+      "Idle"
+    );
+    this.sceneController.scene.add(this.myCharacter.model);
+    this.sceneController.render();
+    this.allCharacters.push(this.myCharacter);
+
+    for (let i = 1; i < this.maxUserCount; ++i) {
+      const character = new Character(
+        null,
+        this.orbitControls,
+        camera,
+        font,
+        models[i],
+        "Idle"
+      );
+      character.model.scale.y *= -1;
+      this.preservedOtherCharacters.push(character);
+      this.sceneController.scene.add(character.model);
+      this.sceneController.render();
+      //   setProgress(
+      //     ((1 + 2) / maxOtherUserCount + 1) * characterRenderProgressRatio +
+      //       textureLoadingProgressRatio
+      //   );
+    }
   }
 
   private allocateCharacter(clientId: string, position?: THREE.Vector3) {
