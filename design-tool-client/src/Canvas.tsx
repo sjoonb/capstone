@@ -1,36 +1,31 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 
 const Canvas = ({ className }: { className?: string }) => {
   const defaultClasses = "";
   const mergedClasses = `${defaultClasses} ${className}`;
   const ref = useRef<HTMLCanvasElement | null>(null);
 
-  // const handleWheel = (event: React.WheelEvent<HTMLCanvasElement>) => {
-  // if (!canvasRef.current) return;
+  const [zoom, setZoom] = useState(1);
+  const [translation, setTranslation] = useState({ x: 0, y: 0 });
 
-  // const scaleAmount = event.deltaY < 0 ? 1.1 : 0.9;
-  // const context = canvasRef.current.getContext("2d");
-
-  // if (context) {
-  //   context.scale(scaleAmount, scaleAmount);
-  //   context.clearRect(0, 0, width, height);
-  //   draw(context);
-  // }
-  // };
-
-  const draw = (context: CanvasRenderingContext2D) => {
+  const draw = (
+    context: CanvasRenderingContext2D,
+    zoom: number,
+    translation: { x: number; y: number }
+  ) => {
+    context.save();
+    context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    context.translate(translation.x, translation.y);
+    context.scale(zoom, zoom);
     context.fillStyle = "blue";
-    context.fillRect(500, 500, 100, 100); // x: 10, y: 10, width: 100, height: 100
+    context.fillRect(500, 500, 100, 100);
+    context.restore();
     console.log("draw");
   };
 
-  const handleWheel = (event: WheelEvent) => {
-    event.preventDefault();
-    console.log("Wheel event detected");
-  };
-
-  useEffect(() => {
+  const updateCanvasDimensions = () => {
     if (!ref.current) return;
+
     const width = window.innerWidth;
     const height = window.innerHeight;
 
@@ -39,15 +34,44 @@ const Canvas = ({ className }: { className?: string }) => {
 
     const context = ref.current.getContext("2d");
     if (context) {
-      draw(context);
+      draw(context, zoom, translation);
     }
+  };
+
+  const handleWheel = (event: WheelEvent) => {
+    if (event.metaKey || event.ctrlKey) {
+      event.preventDefault();
+
+      const canvasBounds = ref.current?.getBoundingClientRect();
+      const mouseX = event.clientX - (canvasBounds?.left || 0);
+      const mouseY = event.clientY - (canvasBounds?.top || 0);
+
+      const scaleAmount = event.deltaY < 0 ? 1.1 : 0.9;
+      const newZoom = zoom * scaleAmount;
+
+      const translationX = mouseX - scaleAmount * (mouseX - translation.x);
+      const translationY = mouseY - scaleAmount * (mouseY - translation.y);
+
+      setZoom(newZoom);
+      setTranslation({ x: translationX, y: translationY });
+    }
+  };
+
+  useEffect(() => {
+    if (!ref.current) return;
+    updateCanvasDimensions();
+
     const target = ref.current;
+
     target.addEventListener("wheel", handleWheel, { passive: false });
+    window.addEventListener("resize", updateCanvasDimensions);
 
     return () => {
+      console.log('calle?');
       target.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("resize", updateCanvasDimensions);
     };
-  }, [ref]);
+  }, [ref, zoom, translation]);
 
   return (
     <canvas
