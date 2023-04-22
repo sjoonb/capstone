@@ -109,7 +109,7 @@ export class GameController {
       this.mouseClickPoint = this.sceneController.raycastMouseClickPoint(
         this.mouseInputController.getMouse()
       );
-      // this.networkController.emitMouseClickPoint(this.mouseClickPoint);
+      this.networkController.emitMouseClickPoint(this.mouseClickPoint);
     }
     for (let i = 0; i < this.allCharacters.length; ++i) {
       const controls = this.allCharacters[i];
@@ -156,10 +156,6 @@ export class GameController {
       this.preservedOtherCharacters.push(character);
       this.sceneController.scene.add(character.model);
       this.sceneController.render();
-      //   setProgress(
-      //     ((1 + 2) / maxOtherUserCount + 1) * characterRenderProgressRatio +
-      //       textureLoadingProgressRatio
-      //   );
     }
   }
 

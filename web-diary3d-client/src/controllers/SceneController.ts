@@ -64,7 +64,6 @@ export class SceneController {
 
     loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
       this.setProgress(itemsLoaded / itemsTotal);
-      console.log(itemsLoaded / itemsTotal);
     };
 
     loadingManager.onError = function (url) {
