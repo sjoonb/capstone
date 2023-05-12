@@ -1,5 +1,12 @@
-import React, { useRef, useEffect } from "react";
+import React, {
+  useRef,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+  useCallback,
+} from "react";
 import { fabric } from "fabric";
+import { Textbox } from "fabric/fabric-impl";
 
 const useCanvasRef = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -8,10 +15,9 @@ const useCanvasRef = () => {
   useEffect(() => {
     if (canvasRef.current) {
       fabricCanvas.current = new fabric.Canvas(canvasRef.current, {
-        selection: false,
         width: window.innerWidth,
         height: window.innerHeight,
-        backgroundColor: "rgb(240, 240, 240)"
+        backgroundColor: "rgb(240, 240, 240)",
       });
     }
     return () => {
@@ -53,6 +59,17 @@ const useCanvasZooming = (
         return;
       }
       if (opt.e.ctrlKey || opt.e.metaKey) {
+        const activeObject = fabricCanvas.current.getActiveObject();
+        const wasEditing =
+          activeObject &&
+          activeObject.type === "textbox" &&
+          (activeObject as Textbox).isEditing;
+
+        if (wasEditing) {
+          (activeObject as fabric.Textbox).exitEditing();
+          fabricCanvas.current.discardActiveObject();
+        }
+
         const delta = opt.e.deltaY;
         let zoom = fabricCanvas.current.getZoom();
         zoom *= 0.999 ** delta;
@@ -62,10 +79,11 @@ const useCanvasZooming = (
           { x: opt.e.offsetX, y: opt.e.offsetY },
           zoom
         );
+        console.log("render all");
         opt.e.preventDefault();
         opt.e.stopPropagation();
 
-        var vpt = fabricCanvas.current.viewportTransform;
+        const vpt = fabricCanvas.current.viewportTransform;
         if (!vpt) return;
         fabricCanvas.current.setViewportTransform(vpt);
       }
@@ -122,19 +140,47 @@ const useCanvasObjects = (
   fabricCanvas: React.MutableRefObject<fabric.Canvas | null>,
   pos: number
 ) => {
+  const size = 100;
   useEffect(() => {
     if (!fabricCanvas.current) {
       return;
     }
     const rect = new fabric.Rect({
-      left: pos,
-      top: pos,
-      width: 100,
-      height: 100,
+      left: pos - size / 2,
+      top: pos - size / 2,
+      width: size,
+      height: size,
       fill: "blue",
     });
     fabricCanvas.current.add(rect);
-    fabricCanvas.current.renderAll();
+  }, [fabricCanvas]);
+};
+
+const useRemoveObjectOnBackspace = (
+  fabricCanvas: React.MutableRefObject<fabric.Canvas | null>
+) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!fabricCanvas.current) {
+        return;
+      }
+
+      if (e.key === "Backspace") {
+        const activeObjects = fabricCanvas.current.getActiveObjects();
+        if (activeObjects.length) {
+          activeObjects.forEach((object) => {
+            fabricCanvas.current?.remove(object);
+          });
+          fabricCanvas.current.discardActiveObject().requestRenderAll();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [fabricCanvas]);
 };
 
@@ -165,59 +211,119 @@ const useRepeatingBackgroundObjects = (
   }, [fabricCanvas]);
 };
 
-const useCanvasObjectMoving = (
+const useAddObject = (
   fabricCanvas: React.MutableRefObject<fabric.Canvas | null>
 ) => {
-  useEffect(() => {
-    const handleObjectMoving = (e: any) => {
+  const getCenterOfViewport = () => {
+    if (!fabricCanvas.current) {
+      return;
+    }
+    const zoom = fabricCanvas.current.getZoom();
+    const pan = fabricCanvas.current.viewportTransform!;
+    const centerX = (-pan[4] + window.innerWidth / 2) / zoom;
+    const centerY = (-pan[5] + window.innerHeight / 2) / zoom;
+    return new fabric.Point(centerX, centerY);
+  };
+
+  console.log("called");
+
+  return useCallback(
+    (type: string, imageUrl?: string) => {
       if (!fabricCanvas.current) {
         return;
       }
-      const object = e.target as fabric.Rect;
-      if (!object) {
-        return;
-      }
-      object.setCoords();
-      const boundingRect = object.getBoundingRect();
-      const zoom = fabricCanvas.current.getZoom();
-      const viewportMatrix = fabricCanvas.current.viewportTransform;
 
-      if (!viewportMatrix) {
+      const center = getCenterOfViewport();
+      if (!center) {
         return;
       }
 
-      boundingRect.top = (boundingRect.top - viewportMatrix[5]) / zoom;
-      boundingRect.left = (boundingRect.left - viewportMatrix[4]) / zoom;
-      boundingRect.width /= zoom;
-      boundingRect.height /= zoom;
-    };
+      let object;
 
-    fabricCanvas.current?.on("object:moving", handleObjectMoving);
+      switch (type) {
+        case "sticker":
+          object = new fabric.Rect({
+            left: center.x,
+            top: center.y,
+            width: 100,
+            height: 100,
+            fill: "blue",
+          });
+          break;
+        case "textbox":
+          object = new fabric.Textbox("", {
+            left: center.x,
+            top: center.y,
+            width: 150,
+            fontSize: 32,
+          });
+          object.enterEditing();
+          break;
+        // add case of image
+        case "image":
+          if (!imageUrl) {
+            throw new Error("imageUrl is required");
+          }
 
-    return () => {
-      fabricCanvas.current?.off("object:moving", handleObjectMoving);
-    };
-  }, [fabricCanvas]);
+          fabric.Image.fromURL(imageUrl, function (img) {
+            img.set({
+              left: center.x,
+              top: center.y,
+            });
+            fabricCanvas.current?.add(img);
+            fabricCanvas.current?.renderAll();
+            fabricCanvas.current?.setActiveObject(img);
+          });
+
+          break;
+        default:
+          return;
+      }
+      if (object) {
+        fabricCanvas.current.add(object);
+        fabricCanvas.current.setActiveObject(object);
+      }
+      fabricCanvas.current.renderAll();
+    },
+    [fabricCanvas]
+  );
 };
 
-const FabricCanvas = () => {
+type FabricCanvasProps = {
+  className?: string;
+};
+
+const FabricCanvas = forwardRef((props: FabricCanvasProps, ref) => {
   const { canvasRef, fabricCanvas } = useCanvasRef();
 
-  const backgroundImageRepeat = 10;
-  const centerPos = (1024 * backgroundImageRepeat) / 2 - 1024 / 2;
+  const imageSize = 1024;
+  const backgroundImageRepeatCnt = 10;
+  const centerPos = (imageSize * backgroundImageRepeatCnt) / 2;
+
+  const addObject = useAddObject(fabricCanvas);
+
+  useImperativeHandle(ref, () => ({
+    addObject,
+  }));
 
   useCanvasResize(fabricCanvas);
-  useRepeatingBackgroundObjects(fabricCanvas, backgroundImageRepeat);
+  useRepeatingBackgroundObjects(fabricCanvas, backgroundImageRepeatCnt);
   useCanvasObjects(fabricCanvas, centerPos);
+  useRemoveObjectOnBackspace(fabricCanvas);
   useCanvasPanning(fabricCanvas);
   useCanvasZooming(fabricCanvas);
-  useCanvasObjectMoving(fabricCanvas);
 
   useEffect(() => {
-    fabricCanvas.current?.absolutePan(new fabric.Point(centerPos, centerPos));
+    // first panning to centerPos
+    fabricCanvas.current?.absolutePan(
+      new fabric.Point(
+        centerPos - window.innerWidth / 2,
+        centerPos - window.innerHeight / 2
+      )
+    );
   }, [fabricCanvas]);
 
-  return <canvas ref={canvasRef} style={{ border: "1px solid black" }} />;
-};
+  return <canvas ref={canvasRef} className={`${props.className}`} />;
+});
 
 export default FabricCanvas;
