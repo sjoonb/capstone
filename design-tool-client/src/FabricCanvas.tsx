@@ -84,6 +84,8 @@ const useCanvasZooming = (
         opt.e.preventDefault();
         opt.e.stopPropagation();
 
+        fabricCanvas.current.renderAll();
+
         const vpt = fabricCanvas.current.viewportTransform;
         if (!vpt) return;
         fabricCanvas.current.setViewportTransform(vpt);
@@ -118,6 +120,7 @@ const useCanvasPanning = (
         }
         const delta = new fabric.Point(opt.e.movementX, opt.e.movementY);
         fabricCanvas.current.relativePan(delta);
+        fabricCanvas.current.renderAll();
       }
     };
 
@@ -273,10 +276,12 @@ const useAddObject = (
 
 const useSaveCanvasState = (
   fabricCanvas: React.MutableRefObject<fabric.Canvas | null>,
-  saveStateFunction: (state: any) => void
+  saveStateFunction: (state: any) => void,
+  canvasStateLoaded: boolean
 ) => {
+  console.log(canvasStateLoaded);
   useEffect(() => {
-    if (!fabricCanvas.current) return;
+    if (!fabricCanvas.current || !canvasStateLoaded) return;
 
     const saveCanvasState = () => {
       const objects = fabricCanvas.current?.getObjects().filter((obj) => {
@@ -304,7 +309,7 @@ const useSaveCanvasState = (
       fabricCanvas.current?.off("object:added", handleObjectChanged);
       fabricCanvas.current?.off("object:removed", handleObjectChanged);
     };
-  }, [fabricCanvas, saveStateFunction]);
+  }, [fabricCanvas, saveStateFunction, canvasStateLoaded]);
 };
 
 type FabricCanvasProps = {
@@ -334,7 +339,7 @@ const FabricCanvas = forwardRef((props: FabricCanvasProps, ref) => {
   useRemoveObjectOnBackspace(fabricCanvas);
   useCanvasPanning(fabricCanvas);
   useCanvasZooming(fabricCanvas);
-  useSaveCanvasState(fabricCanvas, saveCanvasState);
+  useSaveCanvasState(fabricCanvas, saveCanvasState, canvasStateLoaded);
 
   useEffect(() => {
     if (!fabricCanvas.current) {
