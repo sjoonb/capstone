@@ -4,9 +4,11 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useCallback,
+  useState,
 } from "react";
 import { fabric } from "fabric";
 import { Textbox } from "fabric/fabric-impl";
+import { fetchCanvasState, saveCanvasState } from "./canvasApi";
 
 const useCanvasRef = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -79,7 +81,6 @@ const useCanvasZooming = (
           { x: opt.e.offsetX, y: opt.e.offsetY },
           zoom
         );
-        console.log("render all");
         opt.e.preventDefault();
         opt.e.stopPropagation();
 
@@ -136,26 +137,6 @@ const useCanvasPanning = (
   }, [fabricCanvas]);
 };
 
-const useCanvasObjects = (
-  fabricCanvas: React.MutableRefObject<fabric.Canvas | null>,
-  pos: number
-) => {
-  const size = 100;
-  useEffect(() => {
-    if (!fabricCanvas.current) {
-      return;
-    }
-    const rect = new fabric.Rect({
-      left: pos - size / 2,
-      top: pos - size / 2,
-      width: size,
-      height: size,
-      fill: "blue",
-    });
-    fabricCanvas.current.add(rect);
-  }, [fabricCanvas]);
-};
-
 const useRemoveObjectOnBackspace = (
   fabricCanvas: React.MutableRefObject<fabric.Canvas | null>
 ) => {
@@ -186,9 +167,14 @@ const useRemoveObjectOnBackspace = (
 
 const useRepeatingBackgroundObjects = (
   fabricCanvas: React.MutableRefObject<fabric.Canvas | null>,
-  repeat: number
+  repeat: number,
+  canvasStateLoaded: boolean
 ) => {
   useEffect(() => {
+    if (!canvasStateLoaded) {
+      return;
+    }
+
     fabric.Image.fromURL("./sketchbook.jpeg", (image) => {
       if (!fabricCanvas.current) {
         return;
@@ -208,7 +194,7 @@ const useRepeatingBackgroundObjects = (
         }
       }
     });
-  }, [fabricCanvas]);
+  }, [fabricCanvas, canvasStateLoaded]);
 };
 
 const useAddObject = (
@@ -224,8 +210,6 @@ const useAddObject = (
     const centerY = (-pan[5] + window.innerHeight / 2) / zoom;
     return new fabric.Point(centerX, centerY);
   };
-
-  console.log("called");
 
   return useCallback(
     (type: string, imageUrl?: string) => {
@@ -259,7 +243,6 @@ const useAddObject = (
           });
           object.enterEditing();
           break;
-        // add case of image
         case "image":
           if (!imageUrl) {
             throw new Error("imageUrl is required");
@@ -274,7 +257,6 @@ const useAddObject = (
             fabricCanvas.current?.renderAll();
             fabricCanvas.current?.setActiveObject(img);
           });
-
           break;
         default:
           return;
@@ -289,12 +271,49 @@ const useAddObject = (
   );
 };
 
+const useSaveCanvasState = (
+  fabricCanvas: React.MutableRefObject<fabric.Canvas | null>,
+  saveStateFunction: (state: any) => void
+) => {
+  useEffect(() => {
+    if (!fabricCanvas.current) return;
+
+    const saveCanvasState = () => {
+      const objects = fabricCanvas.current?.getObjects().filter((obj) => {
+        return obj.name !== "background";
+      });
+
+      if (objects) {
+        const canvasState = { objects: objects };
+        saveStateFunction(canvasState);
+      }
+    };
+
+    const handleObjectChanged = (options: fabric.IEvent) => {
+      if (options.target?.name !== "background") {
+        saveCanvasState();
+      }
+    };
+
+    fabricCanvas.current.on("object:modified", handleObjectChanged);
+    fabricCanvas.current.on("object:added", handleObjectChanged);
+    fabricCanvas.current.on("object:removed", handleObjectChanged);
+
+    return () => {
+      fabricCanvas.current?.off("object:modified", handleObjectChanged);
+      fabricCanvas.current?.off("object:added", handleObjectChanged);
+      fabricCanvas.current?.off("object:removed", handleObjectChanged);
+    };
+  }, [fabricCanvas, saveStateFunction]);
+};
+
 type FabricCanvasProps = {
   className?: string;
 };
 
 const FabricCanvas = forwardRef((props: FabricCanvasProps, ref) => {
   const { canvasRef, fabricCanvas } = useCanvasRef();
+  const [canvasStateLoaded, setCanvasStateLoaded] = useState(false);
 
   const imageSize = 1024;
   const backgroundImageRepeatCnt = 10;
@@ -307,20 +326,41 @@ const FabricCanvas = forwardRef((props: FabricCanvasProps, ref) => {
   }));
 
   useCanvasResize(fabricCanvas);
-  useRepeatingBackgroundObjects(fabricCanvas, backgroundImageRepeatCnt);
-  useCanvasObjects(fabricCanvas, centerPos);
+  useRepeatingBackgroundObjects(
+    fabricCanvas,
+    backgroundImageRepeatCnt,
+    canvasStateLoaded
+  );
   useRemoveObjectOnBackspace(fabricCanvas);
   useCanvasPanning(fabricCanvas);
   useCanvasZooming(fabricCanvas);
+  useSaveCanvasState(fabricCanvas, saveCanvasState);
 
   useEffect(() => {
-    // first panning to centerPos
-    fabricCanvas.current?.absolutePan(
+    if (!fabricCanvas.current) {
+      return;
+    }
+
+    fabricCanvas.current.absolutePan(
       new fabric.Point(
         centerPos - window.innerWidth / 2,
         centerPos - window.innerHeight / 2
       )
     );
+
+    async function loadCanvasState() {
+      const canvasState = await fetchCanvasState();
+      if (canvasState && fabricCanvas.current) {
+        fabricCanvas.current.loadFromJSON(canvasState, () => {
+          fabricCanvas.current!.renderAll();
+          setCanvasStateLoaded(true);
+        });
+      } else {
+        setCanvasStateLoaded(true);
+      }
+    }
+
+    loadCanvasState();
   }, [fabricCanvas]);
 
   return <canvas ref={canvasRef} className={`${props.className}`} />;
