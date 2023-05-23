@@ -28,15 +28,14 @@ interface SocketCallbackOptions {
 
 export class NetworkController {
   private socket: Socket;
-  private websocketUrl: string;
+  private endPointUrl: string;
 
-  constructor({ websocketUrl }: { websocketUrl: string }) {
-    this.websocketUrl = websocketUrl;
+  constructor({ endPointUrl }: { endPointUrl: string }) {
+    this.endPointUrl = endPointUrl;
   }
 
   public initSocketService(callbacks: SocketCallbackOptions) {
-    console.log("this called");
-    this.socket = io(this.websocketUrl, {
+    this.socket = io(this.endPointUrl, {
       transports: ["websocket"],
       reconnection: true,
     });
@@ -75,7 +74,7 @@ export class NetworkController {
       const { clientId, mouseClickPoint } = data;
       const { x, y, z } = mouseClickPoint;
       const position = new THREE.Vector3(x, y, z);
-      callbacks.onOtherMouseClickPoint?.({clientId, position});
+      callbacks.onOtherMouseClickPoint?.({ clientId, position });
     });
 
     this.socket.on("chat", (data) => {
@@ -97,10 +96,23 @@ export class NetworkController {
 
   public emitSyncPos(position: THREE.Vector3) {
     this.socket.emit("sync-pos", position);
-
   }
 
   public disconnectSocket() {
     this.socket.disconnect();
+  }
+
+  public async fetchCanvasState() {
+    return this._fetchCanvasState();
+  }
+
+  private async _fetchCanvasState() {
+    try {
+      const response = await fetch(`${this.endPointUrl}/canvas/load`);
+      return response.json();
+    } catch (error) {
+      console.error("Error fetching canvas state:", error);
+      return null;
+    }
   }
 }

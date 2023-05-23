@@ -11,7 +11,6 @@ import {
   MobileMessageController,
 } from "./controllers/MessageController";
 import { NetworkController } from "./controllers/NetworkController";
-import { sampleImages } from "./sampleImages";
 
 class Main {
   private gameController: GameController;
@@ -24,14 +23,21 @@ class Main {
     // Initialize the scene
     const sceneController = new SceneController({ isMobile: isMobile });
 
+    const networkController = new NetworkController({
+      endPointUrl: "http://192.168.35.163:3333",
+    });
+
+    const canvasState = await networkController.fetchCanvasState();
+
     // Load scene related files
     await sceneController.loadResources({
       sketchbookUrl: "./textures/sketchbook.jpeg",
       fontUrl: "../resources/Do Hyeon_Regular.json",
       modelUrl: "models/Character.glb",
-      sampleImages: sampleImages,
+      canvasState: canvasState,
       maxUserCount: maxUserCount,
     });
+
 
     sceneController.init();
 
@@ -44,10 +50,6 @@ class Main {
     const messageController = isMobile
       ? new MobileMessageController()
       : new MessageController();
-
-    const networkController = new NetworkController({
-      websocketUrl: "https://share-diaray-server-juzsiiiivq-an.a.run.app/",
-    });
 
     // Initialize game controller
     this.gameController = new GameController({
@@ -66,12 +68,10 @@ class Main {
     this.gameLoop();
   }
 
-
-
   private initOrbitControls(sceneController: SceneController): OrbitControls {
     const controls = new OrbitControls(
       sceneController.camera,
-      sceneController.renderer.domElement,
+      sceneController.renderer.domElement
     );
     controls.enableDamping = true;
     controls.minDistance = 5;

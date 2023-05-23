@@ -296,6 +296,7 @@ const useSaveCanvasState = (
 
     const handleObjectChanged = (options: fabric.IEvent) => {
       if (options.target?.name !== "background") {
+        fabricCanvas.current?.bringToFront(options.target!);
         saveCanvasState();
       }
     };

@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { SampleImage } from "../sampleImages";
+import { fabric } from "fabric";
 export class SceneController {
   private sketchbookTexture: THREE.Texture;
   private raycaster = new THREE.Raycaster();
@@ -12,8 +12,8 @@ export class SceneController {
   private floor: THREE.Mesh;
   private _font: THREE.Font;
   private _models: GLTF[];
-  private _sampleImages: SampleImage[];
-  private _sampleImageTextures: THREE.Texture[];
+  private _canvasImageTexture: THREE.Texture;
+  private _sketchbookWidth = (1024 * 10) / 200;
 
   get camera(): THREE.PerspectiveCamera {
     return this._camera;
@@ -42,16 +42,15 @@ export class SceneController {
     sketchbookUrl,
     fontUrl,
     modelUrl,
-    sampleImages,
+    canvasState,
     maxUserCount,
   }: {
     sketchbookUrl: string;
     fontUrl: string;
     modelUrl: string;
-    sampleImages: SampleImage[];
+    canvasState: any;
     maxUserCount: number;
   }) {
-    this._sampleImages = sampleImages;
 
     const loadingManager = new THREE.LoadingManager();
     const textureLoader = new THREE.TextureLoader(loadingManager);
@@ -80,16 +79,32 @@ export class SceneController {
         promises.push(gltfLoader.loadAsync(modelUrl));
       }
 
-      for (let i = 0; i < sampleImages.length; ++i) {
-        promises.push(textureLoader.loadAsync(sampleImages[i].url));
-      }
+      promises.push(
+        new Promise<THREE.Texture>((resolve, reject) => {
+          const canvas = new fabric.Canvas("canvas");
+          canvas.setWidth(1024 * 10); // Replace with your desired width
+          canvas.setHeight(1024 * 10);
+
+          canvas.loadFromJSON(canvasState, async () => {
+            canvas.renderAll();
+
+            const dataURL = canvas.toDataURL();
+            const canvasImage = new Image();
+
+            canvasImage.src = dataURL;
+
+            const texture = await textureLoader.loadAsync(dataURL);
+            resolve(texture);
+          });
+        })
+      );
 
       const results = await Promise.all(promises);
 
       this.sketchbookTexture = results[0];
       this._font = results[1];
       this._models = results.slice(2, 2 + maxUserCount);
-      this._sampleImageTextures = results.slice(2 + maxUserCount);
+      this._canvasImageTexture = results[2 + maxUserCount];
 
       console.log("All resources loaded!");
     } catch (error) {
@@ -97,13 +112,14 @@ export class SceneController {
     }
   }
 
-  public init() {
+  public async init() {
     this.initScene();
     this.initCamera();
     this.initRenderer();
     this.addLight();
     this.addFloor();
-    this.addSampleImages();
+    this.initCanvasState();
+    // this.addSampleImages();
     document.body.appendChild(this.renderer.domElement);
     window.addEventListener("resize", () => this.onWindowResize());
   }
@@ -116,7 +132,6 @@ export class SceneController {
     const intersects = this.raycaster.intersectObject(
       this.scene.getObjectByName("floor")
     );
-
     if (intersects.length > 0) {
       return intersects[0].point;
     }
@@ -168,8 +183,8 @@ export class SceneController {
   }
 
   private addFloor() {
-    const WIDTH = 60;
-    const LENGTH = 60;
+    const WIDTH = this._sketchbookWidth;
+    const LENGTH = this._sketchbookWidth;
 
     const geometry = new THREE.PlaneGeometry(WIDTH, LENGTH);
     const material = new THREE.MeshStandardMaterial({
@@ -182,9 +197,6 @@ export class SceneController {
     this.floor.receiveShadow = true;
     this.floor.rotation.x = -Math.PI / 2;
     this.floor.name = "floor";
-    const texture = material.map;
-    const image = texture.image;
-    console.log(image);
 
     this._scene.add(this.floor);
   }
@@ -194,17 +206,13 @@ export class SceneController {
     map.repeat.x = map.repeat.y = 10;
   }
 
-  private async addSampleImages() {
-    for (let i = 0; i < this._sampleImageTextures.length; ++i) {
-      const sampleImage = this._sampleImages[i];
-      const texture = this._sampleImageTextures[i];
-      const img = texture.image;
+  private async initCanvasState() {
       const geometry = new THREE.PlaneGeometry(
-        img.width / 200,
-        img.height / 200
+        (1024 * 10) / 200,
+        (1024 * 10) / 200
       );
       const material = new THREE.MeshStandardMaterial({
-        map: texture,
+        map: this._canvasImageTexture,
         roughness: 0.3,
         metalness: 0.3,
         transparent: true,
@@ -212,14 +220,9 @@ export class SceneController {
       const image = new THREE.Mesh(geometry, material);
       image.rotation.x = -Math.PI / 2;
       image.position.y += 0.001;
-      const boundingBoxHelper = new THREE.Box3().setFromObject(image);
-      const size = boundingBoxHelper.getSize(new THREE.Vector3());
       image.receiveShadow = true;
       this.scene.add(image);
       this.renderer.render(this.scene, this.camera);
-      image.position.x = sampleImage.x / 200 - 30 + size.x / 2;
-      image.position.z = sampleImage.z / 200 - 30 + size.z / 2;
-    }
   }
 
   private onWindowResize() {
