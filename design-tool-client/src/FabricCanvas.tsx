@@ -152,10 +152,20 @@ const useRemoveObjectOnBackspace = (
       if (e.key === "Backspace") {
         const activeObjects = fabricCanvas.current.getActiveObjects();
         if (activeObjects.length) {
+          let isRemoved = true;
           activeObjects.forEach((object) => {
+            if (
+              object.type === "textbox" &&
+              (object as fabric.Textbox).isEditing
+            ) {
+              isRemoved = false;
+              return;
+            }
             fabricCanvas.current?.remove(object);
           });
-          fabricCanvas.current.discardActiveObject().requestRenderAll();
+          if (isRemoved) {
+            fabricCanvas.current.discardActiveObject().requestRenderAll();
+          }
         }
       }
     };
@@ -296,7 +306,6 @@ const useSaveCanvasState = (
 
     const handleObjectChanged = (options: fabric.IEvent) => {
       if (options.target?.name !== "background") {
-        fabricCanvas.current?.bringToFront(options.target!);
         saveCanvasState();
       }
     };
