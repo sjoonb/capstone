@@ -244,7 +244,7 @@ const useAddObject = (
             top: center.y,
             width: 100,
             height: 100,
-            fill: "blue",
+            fill: "pink",
           });
           break;
         case "textbox":

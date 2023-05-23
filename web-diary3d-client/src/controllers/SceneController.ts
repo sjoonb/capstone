@@ -79,9 +79,12 @@ export class SceneController {
         promises.push(gltfLoader.loadAsync(modelUrl));
       }
 
+
+      console.log(canvasState);
       promises.push(
         new Promise<THREE.Texture>((resolve, reject) => {
           const canvas = new fabric.Canvas("canvas");
+
           canvas.setWidth(1024 * 10); // Replace with your desired width
           canvas.setHeight(1024 * 10);
 
