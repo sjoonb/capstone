@@ -11,6 +11,7 @@ import {
   MobileMessageController,
 } from "./controllers/MessageController";
 import { NetworkController } from "./controllers/NetworkController";
+import { SpaceController } from "./controllers/SpaceController";
 
 class Main {
   private gameController: GameController;
@@ -38,7 +39,6 @@ class Main {
       maxUserCount: maxUserCount,
     });
 
-
     sceneController.init();
 
     const orbitControls = this.initOrbitControls(sceneController);
@@ -51,6 +51,8 @@ class Main {
       ? new MobileMessageController()
       : new MessageController();
 
+    const spaceController = new SpaceController();
+
     // Initialize game controller
     this.gameController = new GameController({
       orbitControls: orbitControls,
@@ -58,11 +60,13 @@ class Main {
       mouseInputController: mouseInputController,
       messageController: messageController,
       networkController: networkController,
+      spaceController: spaceController,
       maxUserCount: maxUserCount,
     });
 
     this.gameController.connectToServer();
     this.gameController.startListenOnMessageSent();
+    this.gameController.startListenOnSpaceButtonClick();
 
     // Start the game loop
     this.gameLoop();

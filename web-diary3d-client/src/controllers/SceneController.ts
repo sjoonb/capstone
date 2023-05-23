@@ -119,7 +119,6 @@ export class SceneController {
     this.addLight();
     this.addFloor();
     this.initCanvasState();
-    // this.addSampleImages();
     document.body.appendChild(this.renderer.domElement);
     window.addEventListener("resize", () => this.onWindowResize());
   }
@@ -127,6 +126,7 @@ export class SceneController {
   public render() {
     this.renderer.render(this.scene, this.camera);
   }
+
   public raycastMouseClickPoint(mouse: THREE.Vector2): THREE.Vector3 | null {
     this.raycaster.setFromCamera(mouse, this.camera);
     const intersects = this.raycaster.intersectObject(

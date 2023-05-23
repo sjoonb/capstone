@@ -136,12 +136,17 @@ export class Character {
     this.chatbubble = this.createChatBubble(scene, text);
     const boundingBoxHelper = new THREE.Box3().setFromObject(this.chatbubble);
     this.chatBubbleSize = boundingBoxHelper.getSize(new THREE.Vector3());
-    // this.updateChatbubblePosition();
 
     this.timer = setTimeout(() => {
       scene.remove(this.chatbubble);
       this.chatbubble = null;
     }, 3000);
+  }
+
+  public teleportTo(delta: number, position: THREE.Vector3) {
+    while (this.shouldMoveCharacterTo(position)) {
+      this.update(delta, position);
+    }
   }
 
   private shouldMoveCharacterTo(position: THREE.Vector3): boolean {

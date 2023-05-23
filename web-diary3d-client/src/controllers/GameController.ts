@@ -5,6 +5,7 @@ import { MouseInputController } from "./MouseInputController";
 import { Character } from "../character/Character";
 import { MessageController as MessageController } from "./MessageController";
 import { NetworkController } from "./NetworkController";
+import { SpaceController } from "./SpaceController";
 
 export class GameController {
   private orbitControls: OrbitControls;
@@ -12,6 +13,7 @@ export class GameController {
   private mouseInputController: MouseInputController;
   private messageController: MessageController;
   private networkController: NetworkController;
+  private spaceController: SpaceController;
   private myCharacter: Character;
   private preservedOtherCharacters: Character[] = [];
   private allCharacters: Character[] = [];
@@ -30,6 +32,7 @@ export class GameController {
     mouseInputController,
     messageController,
     networkController,
+    spaceController,
     maxUserCount,
   }: {
     orbitControls: OrbitControls;
@@ -37,6 +40,7 @@ export class GameController {
     mouseInputController: MouseInputController;
     messageController: MessageController;
     networkController: NetworkController;
+    spaceController: SpaceController;
     maxUserCount: number;
   }) {
     this.orbitControls = orbitControls;
@@ -44,6 +48,7 @@ export class GameController {
     this.mouseInputController = mouseInputController;
     this.messageController = messageController;
     this.networkController = networkController;
+    this.spaceController = spaceController;
     this.maxUserCount = maxUserCount;
     this.initCharacters();
   }
@@ -100,6 +105,13 @@ export class GameController {
     this.messageController.onMessageSent((message) => {
       this.myCharacter.showChatbubble(message, this.sceneController.scene);
       this.networkController.emitChatMessage(message);
+    });
+  }
+
+  public startListenOnSpaceButtonClick() {
+    this.spaceController.onButtonClick((pos) => {
+      const mixerUpdateDelta = this.clock.getDelta();
+      this.myCharacter.teleportTo(mixerUpdateDelta, pos);
     });
   }
 
